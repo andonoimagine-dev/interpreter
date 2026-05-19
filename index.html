@@ -277,6 +277,8 @@ let visInt = null;
 let processing = false;
 let muted = false;
 let charsUsed = 0;
+let pendingText = '';
+let pendingTimer = null;
 
 function loadCounter() {
   myMemoryEmail = localStorage.getItem(EMAIL_KEY) || '';
@@ -391,6 +393,9 @@ function start() {
 function stop() {
   isRunning = false;
   stopRec(); stopWave();
+  clearTimeout(pendingTimer);
+  pendingText = '';
+  processing = false;
   setStatus('', 'Interpreter dihentikan');
   document.getElementById('btn-main').classList.remove('running');
   document.getElementById('btn-icon').textContent = '▶';
@@ -409,15 +414,25 @@ function startRec() {
   rec.onstart = () => setStatus('listening', 'Mendengarkan — bicara sekarang...');
 
   rec.onresult = (e) => {
+    // Jika speaker sedang berbunyi, abaikan semua input mic (cegah echo/duplikasi)
+    if (isSpeaking) return;
+
     let interim = '';
     for (let i = e.resultIndex; i < e.results.length; i++) {
       const t = e.results[i][0].transcript;
       if (e.results[i].isFinal) {
-        if (!processing) {
-          processing = true;
-          document.getElementById('interim-txt').textContent = '⌛ "' + t.trim() + '"';
-          handleFinal(t.trim());
-        }
+        // Buffer kalimat — tunggu 600ms sebelum proses, kalau ada lanjutan digabung dulu
+        pendingText += t;
+        clearTimeout(pendingTimer);
+        pendingTimer = setTimeout(() => {
+          const full = pendingText.trim();
+          pendingText = '';
+          if (full && full.length >= 2 && !processing) {
+            processing = true;
+            document.getElementById('interim-txt').textContent = '⌛ "' + full + '"';
+            handleFinal(full);
+          }
+        }, 600);
       } else { interim += t; }
     }
     if (interim) document.getElementById('interim-txt').textContent = interim;
