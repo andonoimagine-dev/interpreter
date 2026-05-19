@@ -279,6 +279,8 @@ let muted = false;
 let charsUsed = 0;
 let pendingText = '';
 let pendingTimer = null;
+let lastProcessedText = '';
+let lastProcessedTime = 0;
 
 function loadCounter() {
   myMemoryEmail = localStorage.getItem(EMAIL_KEY) || '';
@@ -396,6 +398,8 @@ function stop() {
   clearTimeout(pendingTimer);
   pendingText = '';
   processing = false;
+  lastProcessedText = '';
+  lastProcessedTime = 0;
   setStatus('', 'Interpreter dihentikan');
   document.getElementById('btn-main').classList.remove('running');
   document.getElementById('btn-icon').textContent = '▶';
@@ -414,24 +418,36 @@ function startRec() {
   rec.onstart = () => setStatus('listening', 'Mendengarkan — bicara sekarang...');
 
   rec.onresult = (e) => {
-    // Abaikan semua input saat speaker berbunyi (cegah echo)
     if (isSpeaking) return;
 
-    let interim = '';
     for (let i = e.resultIndex; i < e.results.length; i++) {
-      const t = e.results[i][0].transcript;
-      if (e.results[i].isFinal) {
-        const clean = t.trim();
-        if (clean.length >= 3 && !processing) {
-          processing = true;
-          document.getElementById('interim-txt').textContent = '⌛ "' + clean + '"';
-          handleFinal(clean);
-        }
-      } else {
-        interim += t;
+      const t = e.results[i][0].transcript.trim();
+      if (!e.results[i].isFinal) {
+        document.getElementById('interim-txt').textContent = t;
+        continue;
       }
+      if (t.length < 3) continue;
+
+      // Debounce: kumpulkan fragment dalam window 1.2 detik, ambil yang terpanjang
+      if (t.length > (pendingText || '').length) pendingText = t;
+      clearTimeout(pendingTimer);
+      pendingTimer = setTimeout(() => {
+        const final = pendingText;
+        pendingText = '';
+        const now = Date.now();
+        // Filter duplikat: abaikan jika teks sama / sangat mirip dalam 4 detik terakhir
+        const tooSimilar = lastProcessedText &&
+          (final === lastProcessedText ||
+           final.startsWith(lastProcessedText) ||
+           lastProcessedText.startsWith(final)) &&
+          (now - lastProcessedTime < 4000);
+        if (tooSimilar) return;
+        lastProcessedText = final;
+        lastProcessedTime = now;
+        document.getElementById('interim-txt').textContent = '⌛ "' + final + '"';
+        handleFinal(final);
+      }, 1200);
     }
-    if (interim) document.getElementById('interim-txt').textContent = interim;
   };
 
   rec.onerror = (e) => {
