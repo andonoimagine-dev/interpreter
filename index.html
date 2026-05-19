@@ -414,26 +414,22 @@ function startRec() {
   rec.onstart = () => setStatus('listening', 'Mendengarkan — bicara sekarang...');
 
   rec.onresult = (e) => {
-    // Jika speaker sedang berbunyi, abaikan semua input mic (cegah echo/duplikasi)
+    // Abaikan semua input saat speaker berbunyi (cegah echo)
     if (isSpeaking) return;
 
     let interim = '';
     for (let i = e.resultIndex; i < e.results.length; i++) {
       const t = e.results[i][0].transcript;
       if (e.results[i].isFinal) {
-        // Buffer kalimat — tunggu 600ms sebelum proses, kalau ada lanjutan digabung dulu
-        pendingText += t;
-        clearTimeout(pendingTimer);
-        pendingTimer = setTimeout(() => {
-          const full = pendingText.trim();
-          pendingText = '';
-          if (full && full.length >= 2 && !processing) {
-            processing = true;
-            document.getElementById('interim-txt').textContent = '⌛ "' + full + '"';
-            handleFinal(full);
-          }
-        }, 600);
-      } else { interim += t; }
+        const clean = t.trim();
+        if (clean.length >= 3 && !processing) {
+          processing = true;
+          document.getElementById('interim-txt').textContent = '⌛ "' + clean + '"';
+          handleFinal(clean);
+        }
+      } else {
+        interim += t;
+      }
     }
     if (interim) document.getElementById('interim-txt').textContent = interim;
   };
@@ -473,7 +469,7 @@ async function translate(text, from, to) {
 }
 
 async function handleFinal(text) {
-  if (!text || text.length < 2) { processing = false; return; }
+  if (!text || text.length < 3) { processing = false; return; }
   if (charsUsed >= DAILY_LIMIT) {
     addMessage(text, { error: true }, 'id');
     processing = false;
@@ -484,6 +480,10 @@ async function handleFinal(text) {
 
   const lang = detectLang(text);
   const charCount = text.length;
+
+  // Bebaskan processing segera agar kalimat berikutnya bisa masuk
+  processing = false;
+  document.getElementById('interim-txt').textContent = '—';
 
   try {
     let result = {};
@@ -504,8 +504,6 @@ async function handleFinal(text) {
         addChars(charCount * 2);
         addMessage(text, result, lang);
         if (!muted) speakText(jp, 'ja-JP');
-        processing = false;
-        document.getElementById('interim-txt').textContent = '—';
         return;
       }
     } else if (lang === 'jp') {
@@ -529,9 +527,6 @@ async function handleFinal(text) {
   } catch(err) {
     setStatus('listening', 'Gagal terjemahkan — coba lagi...');
   }
-
-  processing = false;
-  document.getElementById('interim-txt').textContent = '—';
 }
 
 function speakText(text, lang) {
