@@ -317,6 +317,7 @@
 
 // ===== STATE =====
 const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+const IS_ANDROID = /Android/i.test(navigator.userAgent);
 const State = {
   running: false,
   speaking: false,
@@ -387,6 +388,7 @@ if (sessionStorage.getItem('interp_auth') === '1') {
 // ===== INIT =====
 function init() {
   if (!SR) document.getElementById('warn-browser').style.display = 'block';
+  console.log('[platform] Android:', IS_ANDROID, 'UA:', navigator.userAgent);
   // Restore timer duration
   const saved = parseInt(localStorage.getItem('interp_timer') || '5');
   State.timerDuration = saved * 1000;
@@ -698,7 +700,8 @@ async function startRecognition(lang) {
   }
 
   const r = new SR();
-  r.continuous = true;
+  // Android tidak handle continuous:true dengan baik — paksa false
+  r.continuous = !IS_ANDROID;
   r.interimResults = true;
   r.lang = lang;
   r.maxAlternatives = 1;
@@ -725,7 +728,7 @@ async function startRecognition(lang) {
             lastPartialText = txt;
             clearTimeout(silenceTimer);
             silenceTimer = setTimeout(() => {
-              // Setelah 2 detik tidak ada partial baru, paksa proses sebagai final
+              // Setelah hening, paksa proses sebagai final
               if (lastPartialText && lastPartialText.length >= 2) {
                 console.log('[silence-force]', lastPartialText);
                 setLiveText(lastPartialText, 'final');
@@ -734,7 +737,7 @@ async function startRecognition(lang) {
                 clearTimeout(pendingTimer);
                 pendingTimer = setTimeout(() => triggerFinal(), 100);
               }
-            }, 2000);
+            }, IS_ANDROID ? 1500 : 2000);
           }
         }
         continue;
