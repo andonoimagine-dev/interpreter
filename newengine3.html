@@ -781,8 +781,22 @@ async function startRecognition(lang) {
 
   r.onend = () => {
     recBusy = false;
+    console.log('[recognition] onend, lastPartialText:', lastPartialText);
     if (!State.running || State.speaking) return;
-    // Restart selama sesi masih sama
+
+    // Di Android (continuous:false), kalau ada partial yang belum diproses, paksa final
+    if (IS_ANDROID && lastPartialText && lastPartialText.length >= 2) {
+      console.log('[android onend] force final from partial:', lastPartialText);
+      const txt = lastPartialText;
+      lastPartialText = '';
+      clearTimeout(silenceTimer);
+      setLiveText(txt, 'final');
+      pending = txt;
+      clearTimeout(pendingTimer);
+      triggerFinal();
+    }
+
+    // Restart recognition selama sesi masih sama
     if (State.inputMode === 'a' && timerInterval) {
       setTimeout(() => { if (State.running && !State.speaking && timerInterval) startRecognition(lang); }, 200);
     } else if (State.inputMode === 'b' && State.tapSide) {
@@ -821,7 +835,12 @@ function cleanupAudio() {
   }
 }
 
-// ===== VU METER =====
+// ===== VU METER + VAD (Voice Activity Detection) =====
+let vadWasSpeaking = false;
+let vadSilenceStart = 0;
+const VAD_SILENCE_MS = 1200; // 1.2 detik hening = anggap selesai bicara
+const VAD_VOICE_THRESHOLD = 15;
+
 function setupVUMeter(stream) {
   cancelAnimationFrame(vuRAF);
   if (audioCtx) try { audioCtx.close(); } catch(x) {}
@@ -832,6 +851,8 @@ function setupVUMeter(stream) {
   analyser.smoothingTimeConstant = 0.7;
   source.connect(analyser);
   const data = new Uint8Array(analyser.frequencyBinCount);
+  vadWasSpeaking = false;
+  vadSilenceStart = 0;
 
   function tick() {
     if (!State.running) return;
@@ -842,7 +863,7 @@ function setupVUMeter(stream) {
     let sum = 0;
     for (let i = voiceStart; i < voiceEnd; i++) sum += data[i];
     const avg = sum / (voiceEnd - voiceStart);
-    // Map ke 7 bar VU (0-7 level)
+    // Map ke 7 bar VU
     const level = Math.min(7, Math.floor(avg / 8));
     for (let i = 1; i <= 7; i++) {
       const bar = $('vu' + i);
@@ -854,13 +875,49 @@ function setupVUMeter(stream) {
         bar.style.height = '3px';
       }
     }
-    // Dot scale saat ada suara
     const dot = $('dot');
     if (level >= 2 && dot.classList.contains('listening')) {
       dot.style.transform = 'scale(1.4)';
     } else {
       dot.style.transform = 'scale(1)';
     }
+
+    // ===== VAD logic — deteksi silence untuk paksa final =====
+    const isVoice = avg > VAD_VOICE_THRESHOLD;
+    if (isVoice) {
+      if (!vadWasSpeaking) {
+        vadWasSpeaking = true;
+        console.log('[VAD] voice detected');
+        // Tampilkan indikator visual bahwa suara terdeteksi
+        // (terutama berguna di Android di mana partial result lambat/tidak muncul)
+        const liveText = $('live-text');
+        if (liveText.classList.contains('empty') || !lastPartialText) {
+          setLiveText('🎙 Suara terdeteksi...', 'partial');
+        }
+      }
+      vadSilenceStart = 0;
+    } else {
+      if (vadWasSpeaking) {
+        if (vadSilenceStart === 0) {
+          vadSilenceStart = Date.now();
+        } else if (Date.now() - vadSilenceStart > VAD_SILENCE_MS) {
+          // User sudah hening cukup lama setelah bicara → paksa proses
+          vadWasSpeaking = false;
+          vadSilenceStart = 0;
+          if (lastPartialText && lastPartialText.length >= 2 && !State.speaking) {
+            console.log('[VAD] silence detected → force final:', lastPartialText);
+            const txt = lastPartialText;
+            lastPartialText = '';
+            clearTimeout(silenceTimer);
+            setLiveText(txt, 'final');
+            pending = txt;
+            clearTimeout(pendingTimer);
+            triggerFinal();
+          }
+        }
+      }
+    }
+
     vuRAF = requestAnimationFrame(tick);
   }
   tick();
