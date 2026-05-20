@@ -724,11 +724,16 @@ async function startRecognition(lang) {
       pendingTimer = setTimeout(() => {
         const final = pending;
         pending = '';
+        if (!final || final.length < 2) return;
         const now = Date.now();
-        if (final === lastFinal && now - lastFinalTime < 4000) return;
-        if (lastFinal && (final.startsWith(lastFinal) || lastFinal.startsWith(final)) && now - lastFinalTime < 2500) return;
+        // Hanya block jika EXACT MATCH dalam 3 detik (untuk cegah Android double-fire)
+        if (final === lastFinal && now - lastFinalTime < 3000) {
+          console.log('[dup] skipped exact match:', final);
+          return;
+        }
         lastFinal = final;
         lastFinalTime = now;
+        console.log('[final]', final);
         handleFinal(final);
       }, 700);
     }
@@ -876,8 +881,10 @@ function detectSourceLang(text) {
 async function handleFinal(text) {
   if (!text || text.length < 2) return;
   setStatus('processing', 'Menerjemahkan...');
+  console.log('[handleFinal] processing:', text);
 
   const sourceLang = detectSourceLang(text);
+  console.log('[handleFinal] detected source lang:', sourceLang);
 
   try {
     let result;
@@ -908,9 +915,10 @@ async function handleFinal(text) {
     State.sentences++;
     localStorage.setItem('interp_count', State.sentences.toString());
     updateStats();
+    console.log('[handleFinal] success');
   } catch(err) {
-    console.warn('Translate error:', err);
-    setStatus('listening', 'Gagal menerjemahkan');
+    console.error('[handleFinal] FAILED:', err);
+    setStatus('listening', 'Gagal: ' + (err.message || err));
   }
 }
 
