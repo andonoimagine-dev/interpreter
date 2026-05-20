@@ -757,9 +757,10 @@ async function startRecognition(lang) {
   }
 
   const r = new SR();
-  // Android tidak handle continuous:true dengan baik — paksa false
+  // Android: matikan interim & continuous — biar API yang handle end-of-speech
+  // Desktop: continuous + interim untuk live transcript
   r.continuous = !IS_ANDROID;
-  r.interimResults = true;
+  r.interimResults = !IS_ANDROID;
   r.lang = lang;
   r.maxAlternatives = 1;
 
@@ -774,20 +775,19 @@ async function startRecognition(lang) {
 
   r.onresult = (e) => {
     if (State.speaking) return;
-    let latestPartial = '';
     for (let i = e.resultIndex; i < e.results.length; i++) {
       const txt = e.results[i][0].transcript.trim();
-      if (!e.results[i].isFinal) {
+      const isFinal = e.results[i].isFinal;
+
+      // Desktop: handle interim/partial
+      if (!isFinal) {
         if (txt) {
-          latestPartial = txt;
           setLiveText(txt, 'partial');
           debugLog('partial: ' + txt.substring(0, 40));
-          // Update silence timer setiap ada partial baru
           if (txt !== lastPartialText) {
             lastPartialText = txt;
             clearTimeout(silenceTimer);
             silenceTimer = setTimeout(() => {
-              // Setelah hening, paksa proses sebagai final
               if (lastPartialText && lastPartialText.length >= 2) {
                 console.log('[silence-force]', lastPartialText);
                 debugLog('silence-force: ' + lastPartialText, 'warn');
@@ -802,15 +802,17 @@ async function startRecognition(lang) {
         }
         continue;
       }
+
+      // FINAL
       if (txt.length < 2) continue;
-      // FINAL dari API
       debugLog('api-final: ' + txt.substring(0, 40), 'ok');
       setLiveText(txt, 'final');
       clearTimeout(silenceTimer);
       lastPartialText = '';
       if (txt.length > pending.length) pending = txt;
       clearTimeout(pendingTimer);
-      pendingTimer = setTimeout(() => triggerFinal(), 600);
+      // Android: langsung proses, no delay
+      pendingTimer = setTimeout(() => triggerFinal(), IS_ANDROID ? 50 : 600);
     }
   };
 
