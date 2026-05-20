@@ -270,8 +270,8 @@
 
 <div class="imode-bar">
   <span class="imode-label">INPUT MODE</span>
-  <button class="imode-btn act-a" id="imode-a" onclick="setInputMode('a')">⏱ A — AUTO TIMER</button>
-  <button class="imode-btn" id="imode-b" onclick="setInputMode('b')">👆 B — TAP TO TALK</button>
+  <button class="imode-btn act-a" id="imode-a" onclick="setInputMode('a')">&#x23F1; A &mdash; AUTO TIMER</button>
+  <button class="imode-btn" id="imode-b" onclick="setInputMode('b')">&#x1F446; B &mdash; TAP TO TALK</button>
 </div>
 
 <!-- Mode A: timer setting -->
@@ -384,9 +384,12 @@ function loadCounter() {
   // Init timer slider dari localStorage
   const savedTimer = localStorage.getItem('interp_timer') || '5';
   TIMER_DURATION = parseInt(savedTimer) * 1000;
-  document.getElementById('timer-slider').value = savedTimer;
-  document.getElementById('timer-set-val').textContent = savedTimer + ' dtk';
-  document.getElementById('timer-setting').style.display = 'flex';
+  const sliderEl = document.getElementById('timer-slider');
+  const setValEl = document.getElementById('timer-set-val');
+  if (sliderEl) sliderEl.value = savedTimer;
+  if (setValEl) setValEl.textContent = savedTimer + ' dtk';
+  const timerSettingEl = document.getElementById('timer-setting');
+  if (timerSettingEl) timerSettingEl.style.display = 'flex';
 
   const today = new Date().toDateString();
   const saved = localStorage.getItem(TODAY_KEY);
@@ -420,11 +423,6 @@ function resetCounter() {
   updateCounterUI();
 }
 
-function setMode(m) {
-  mode = m;
-  ['jp','cn','both'].forEach(x => {
-    document.getElementById('mode-'+x).className = 'mode-btn' + (x===m ? ' act-'+m : '');
-  });
 function setStatus(state, text) {
   const d = document.getElementById('dot');
   d.className = 'dot' + (state ? ' '+state : '');
@@ -827,19 +825,22 @@ function toggleMute() {
 }
 
 // --- PASSWORD ---
-const PASS_HASH = '7a4f2c9b1e6d3f8a0b5c2e7d4f1a9c3b6e8d2f5a7c0b4e1d9f6a3c8b2e5d7f0';
-
-async function hashStr(str) {
-  const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(str));
-  return Array.from(new Uint8Array(buf)).map(b=>b.toString(16).padStart(2,'0')).join('');
+function simpleHash(str) {
+  // Hash sederhana yang jalan di file lokal maupun HTTPS
+  let hash = 0;
+  for (let i = 0; i < str.length; i++) {
+    const chr = str.charCodeAt(i);
+    hash = ((hash << 5) - hash) + chr;
+    hash |= 0;
+  }
+  return hash.toString(36);
 }
 
-async function checkPass() {
+const CORRECT_HASH = simpleHash('andono2026');
+
+function checkPass() {
   const val = document.getElementById('lock-input').value;
-  const h = await hashStr(val);
-  // compare with stored hash of "andono2026"
-  const correct = await hashStr('andono2026');
-  if (h === correct) {
+  if (simpleHash(val) === CORRECT_HASH) {
     document.getElementById('lock-screen').style.display = 'none';
     document.getElementById('main-app').style.display = 'flex';
     sessionStorage.setItem('interp_auth', '1');
