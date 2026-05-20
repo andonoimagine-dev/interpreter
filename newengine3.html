@@ -339,6 +339,8 @@ let pending = '';
 let pendingTimer = null;
 let lastFinal = '';
 let lastFinalTime = 0;
+let silenceTimer = null;
+let lastPartialText = '';
 
 // Audio context untuk VU meter
 let audioStream = null;
@@ -576,6 +578,8 @@ function stopRun() {
   cleanupAudio();
   pending = '';
   clearTimeout(pendingTimer);
+  clearTimeout(silenceTimer);
+  lastPartialText = '';
   $('btn-main').classList.remove('running');
   $('btn-icon').textContent = '▶';
   $('btn-lbl').textContent = 'START INTERPRETER';
@@ -709,33 +713,40 @@ async function startRecognition(lang) {
 
   r.onresult = (e) => {
     if (State.speaking) return;
+    let latestPartial = '';
     for (let i = e.resultIndex; i < e.results.length; i++) {
       const txt = e.results[i][0].transcript.trim();
       if (!e.results[i].isFinal) {
-        // PARTIAL: tampilkan langsung di live box
-        if (txt) setLiveText(txt, 'partial');
+        if (txt) {
+          latestPartial = txt;
+          setLiveText(txt, 'partial');
+          // Update silence timer setiap ada partial baru
+          if (txt !== lastPartialText) {
+            lastPartialText = txt;
+            clearTimeout(silenceTimer);
+            silenceTimer = setTimeout(() => {
+              // Setelah 2 detik tidak ada partial baru, paksa proses sebagai final
+              if (lastPartialText && lastPartialText.length >= 2) {
+                console.log('[silence-force]', lastPartialText);
+                setLiveText(lastPartialText, 'final');
+                pending = lastPartialText;
+                lastPartialText = '';
+                clearTimeout(pendingTimer);
+                pendingTimer = setTimeout(() => triggerFinal(), 100);
+              }
+            }, 2000);
+          }
+        }
         continue;
       }
       if (txt.length < 2) continue;
-      // FINAL: tampilkan dengan warna hijau, lalu proses
+      // FINAL dari API
       setLiveText(txt, 'final');
+      clearTimeout(silenceTimer);
+      lastPartialText = '';
       if (txt.length > pending.length) pending = txt;
       clearTimeout(pendingTimer);
-      pendingTimer = setTimeout(() => {
-        const final = pending;
-        pending = '';
-        if (!final || final.length < 2) return;
-        const now = Date.now();
-        // Hanya block jika EXACT MATCH dalam 3 detik (untuk cegah Android double-fire)
-        if (final === lastFinal && now - lastFinalTime < 3000) {
-          console.log('[dup] skipped exact match:', final);
-          return;
-        }
-        lastFinal = final;
-        lastFinalTime = now;
-        console.log('[final]', final);
-        handleFinal(final);
-      }, 700);
+      pendingTimer = setTimeout(() => triggerFinal(), 600);
     }
   };
 
@@ -876,6 +887,22 @@ function detectSourceLang(text) {
   if (jp >= 1) return 'jp';
   if (cjk >= 2) return 'cn';
   return 'id';
+}
+
+function triggerFinal() {
+  const final = pending;
+  pending = '';
+  if (!final || final.length < 2) return;
+  const now = Date.now();
+  // Hanya block jika EXACT MATCH dalam 3 detik (cegah double-fire)
+  if (final === lastFinal && now - lastFinalTime < 3000) {
+    console.log('[dup] skipped:', final);
+    return;
+  }
+  lastFinal = final;
+  lastFinalTime = now;
+  console.log('[final]', final);
+  handleFinal(final);
 }
 
 async function handleFinal(text) {
