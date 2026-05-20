@@ -697,10 +697,14 @@ async function startRecWithLang(lang) {
         const nl = recCycle === 0 ? 'id-ID' : getForeignLang();
         setTimeout(() => { if(isRunning && !isSpeaking) { startRecWithLang(nl); startTimerA(); } }, 200);
       } else {
-        // Mode B: no-speech = jeda bicara, restart mic di sisi yang SAMA
-        if (tapActiveSide && isRunning && !isSpeaking) {
-          setTimeout(() => { if(tapActiveSide && isRunning && !isSpeaking) activateTapSide(tapActiveSide); }, 300);
-        }
+        // Mode B: no-speech = jeda, restart mic di bahasa yang SAMA tanpa ubah UI
+        const currentSide = tapActiveSide;
+        const currentLang = lang; // pakai lang dari closure, bukan re-derive
+        setTimeout(() => {
+          if(currentSide && currentSide === tapActiveSide && isRunning && !isSpeaking) {
+            restartRecQuiet(currentLang);
+          }
+        }, 300);
       }
       return;
     }
@@ -711,13 +715,17 @@ async function startRecWithLang(lang) {
   rec.onend = () => {
     if (!isRunning || isSpeaking) return;
     if (inputMode === 'a' && timerInterval) {
-      // Mode A: restart recognition di lang yang sama sampai timer habis
       setTimeout(() => { if(isRunning && !isSpeaking && timerInterval) startRecWithLang(lang); }, 200);
     } else if (inputMode === 'b' && tapActiveSide) {
-      // Mode B: restart mic di sisi yang sama selama tombol masih aktif
-      setTimeout(() => { if(tapActiveSide && isRunning && !isSpeaking) activateTapSide(tapActiveSide); }, 200);
+      // Restart mic di bahasa yang sama, TANPA update UI (cegah loop)
+      const currentSide = tapActiveSide;
+      const currentLang = lang;
+      setTimeout(() => {
+        if(currentSide === tapActiveSide && isRunning && !isSpeaking) {
+          restartRecQuiet(currentLang);
+        }
+      }, 200);
     }
-    // Mode B tapActiveSide === null: berarti sudah di-tap stop, tidak restart
   };
 
   try { rec.start(); } catch(x) {}
@@ -728,6 +736,63 @@ function stopRec() {
   if (rec) { try{rec.stop()}catch(x){} rec = null; }
   if (window._activeStream) { window._activeStream.getTracks().forEach(t => t.stop()); window._activeStream = null; }
   if (window._activeAudioCtx) { try{window._activeAudioCtx.close()}catch(x){} window._activeAudioCtx = null; }
+}
+
+// Restart mic diam-diam tanpa update UI (untuk Mode B keep-alive)
+async function restartRecQuiet(lang) {
+  if (!SpeechRec || !isRunning || isSpeaking) return;
+  if (rec) { try{rec.stop()}catch(x){} rec = null; }
+
+  const r = new SpeechRec();
+  r.continuous = true;
+  r.interimResults = true;
+  r.lang = lang;
+  r.maxAlternatives = 1;
+
+  r.onresult = (e) => {
+    if (isSpeaking) return;
+    for (let i = e.resultIndex; i < e.results.length; i++) {
+      const t = e.results[i][0].transcript.trim();
+      if (!e.results[i].isFinal) { document.getElementById('interim-txt').textContent = t; continue; }
+      if (t.length < 3) continue;
+      if (t.length > (pendingText||'').length) pendingText = t;
+      clearTimeout(pendingTimer);
+      pendingTimer = setTimeout(() => {
+        const final = pendingText; pendingText = '';
+        const now = Date.now();
+        const tooSimilar = lastProcessedText &&
+          (final === lastProcessedText || final.startsWith(lastProcessedText) || lastProcessedText.startsWith(final)) &&
+          (now - lastProcessedTime < 4000);
+        if (tooSimilar) return;
+        lastProcessedText = final; lastProcessedTime = now;
+        document.getElementById('interim-txt').textContent = '⌛ "' + final + '"';
+        handleFinal(final);
+      }, 800);
+    }
+  };
+
+  r.onerror = (e) => {
+    if (e.error === 'no-speech') {
+      const currentSide = tapActiveSide;
+      setTimeout(() => {
+        if(currentSide === tapActiveSide && isRunning && !isSpeaking) restartRecQuiet(lang);
+      }, 300);
+      return;
+    }
+  };
+
+  r.onend = () => {
+    if (!isRunning || isSpeaking) return;
+    const currentSide = tapActiveSide;
+    if (inputMode === 'b' && tapActiveSide) {
+      setTimeout(() => {
+        if(currentSide === tapActiveSide && isRunning && !isSpeaking) restartRecQuiet(lang);
+      }, 200);
+    }
+  };
+
+  rec = r;
+  try { rec.start(); } catch(x) {}
 }
 
 function detectLang(text) {
@@ -812,10 +877,11 @@ function processQ() {
       setTimeout(() => {
         if (!isRunning) return;
         if (inputMode === 'b' && tapActiveSide) {
-          // Mode B: restart mic di sisi yang sama
-          activateTapSide(tapActiveSide);
+          // Mode B: restart mic di sisi yang sama tanpa ubah UI
+          const currentSide = tapActiveSide;
+          const lang = currentSide === 'id' ? 'id-ID' : getForeignLang();
+          restartRecQuiet(lang);
         } else if (inputMode === 'b' && !tapActiveSide) {
-          // Fallback: kembali ke ID jika tidak ada sisi aktif
           activateTapSide('id');
         } else {
           recCycle = 0;
