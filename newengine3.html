@@ -596,11 +596,70 @@ function resetTapUI() {
 }
 
 // ── RECOGNITION CORE ─────────────────────────────────────
-function startRecWithLang(lang) {
+async function startRecWithLang(lang) {
   if (!SpeechRec || !isRunning) return;
   stopRec();
+
+  // Setup mic dengan noise cancelling
+  try {
+    const stream = await navigator.mediaDevices.getUserMedia({
+      audio: {
+        echoCancellation: true,      // hilangkan echo dari speaker
+        noiseSuppression: true,      // kurangi kebisingan background
+        autoGainControl: true,       // normalkan volume suara
+        channelCount: 1,             // mono cukup untuk voice
+        sampleRate: 16000            // optimal untuk speech recognition
+      }
+    });
+
+    // Web Audio VAD — hanya proses saat ada suara di atas threshold
+    const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    const source = audioCtx.createMediaStreamSource(stream);
+    const analyser = audioCtx.createAnalyser();
+    analyser.fftSize = 512;
+    analyser.smoothingTimeConstant = 0.8;
+    source.connect(analyser);
+
+    const dataArray = new Uint8Array(analyser.frequencyBinCount);
+    let silenceTimer = null;
+    let isTalking = false;
+
+    function checkVoiceActivity() {
+      if (!isRunning) { stream.getTracks().forEach(t => t.stop()); audioCtx.close(); return; }
+      analyser.getByteFrequencyData(dataArray);
+      // Fokus pada frekuensi vokal manusia (300Hz-3400Hz)
+      const voiceStart = Math.floor(300 / (audioCtx.sampleRate / analyser.fftSize));
+      const voiceEnd = Math.floor(3400 / (audioCtx.sampleRate / analyser.fftSize));
+      let sum = 0;
+      for (let i = voiceStart; i < voiceEnd; i++) sum += dataArray[i];
+      const avg = sum / (voiceEnd - voiceStart);
+      const VOICE_THRESHOLD = 18; // sensitifitas — naikkan jika terlalu sensitif
+
+      if (avg > VOICE_THRESHOLD) {
+        if (!isTalking) {
+          isTalking = true;
+          clearTimeout(silenceTimer);
+        }
+      } else {
+        if (isTalking) {
+          silenceTimer = setTimeout(() => { isTalking = false; }, 500);
+        }
+      }
+      requestAnimationFrame(checkVoiceActivity);
+    }
+    checkVoiceActivity();
+
+    // Simpan stream untuk cleanup
+    if (window._activeStream) window._activeStream.getTracks().forEach(t => t.stop());
+    window._activeStream = stream;
+    window._activeAudioCtx = audioCtx;
+
+  } catch(err) {
+    console.warn('getUserMedia gagal, lanjut tanpa noise cancelling:', err);
+  }
+
   rec = new SpeechRec();
-  rec.continuous = true; // continuous di semua mode agar tidak stop sendiri
+  rec.continuous = true;
   rec.interimResults = true;
   rec.lang = lang;
   rec.maxAlternatives = 1;
@@ -667,6 +726,8 @@ function startRecWithLang(lang) {
 function stopRec() {
   clearTimerA();
   if (rec) { try{rec.stop()}catch(x){} rec = null; }
+  if (window._activeStream) { window._activeStream.getTracks().forEach(t => t.stop()); window._activeStream = null; }
+  if (window._activeAudioCtx) { try{window._activeAudioCtx.close()}catch(x){} window._activeAudioCtx = null; }
 }
 
 function detectLang(text) {
