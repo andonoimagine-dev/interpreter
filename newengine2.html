@@ -1,0 +1,618 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Live Interpreter Gratis — ID · JP · CN</title>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:ital,wght@0,400;0,500;1,400&family=Noto+Sans+JP&family=Noto+Sans+SC&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0a0a0f;
+    --surface: #13131a;
+    --surface2: #1c1c26;
+    --border: rgba(255,255,255,0.08);
+    --border2: rgba(255,255,255,0.14);
+    --text: #e8e8f0;
+    --muted: #6b6b80;
+    --accent-id: #4ade80;
+    --accent-jp: #f472b6;
+    --accent-cn: #fb923c;
+    --accent-both: #a78bfa;
+    --font: 'IBM Plex Mono', monospace;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: var(--bg); color: var(--text); font-family: var(--font); min-height: 100vh; display: flex; flex-direction: column; }
+
+  .header {
+    padding: 18px 24px;
+    border-bottom: 1px solid var(--border);
+    display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 10px;
+  }
+  .logo { font-size: 13px; font-weight: 500; letter-spacing: 0.12em; color: var(--muted); }
+  .logo span { color: var(--text); }
+  .powered { font-size: 11px; color: var(--muted); letter-spacing: 0.05em; }
+  .powered b { color: #4ade80; font-weight: 500; }
+
+  /* counter bar */
+  .counter-bar {
+    padding: 10px 24px;
+    border-bottom: 1px solid var(--border);
+    display: flex; align-items: center; gap: 16px; flex-wrap: wrap;
+  }
+  .counter-label { font-size: 11px; color: var(--muted); letter-spacing: 0.07em; white-space: nowrap; }
+  .counter-track {
+    flex: 1; height: 6px; background: var(--surface2);
+    border-radius: 3px; overflow: hidden; min-width: 80px;
+  }
+  .counter-fill {
+    height: 100%; border-radius: 3px;
+    background: var(--accent-id);
+    transition: width 0.4s ease, background 0.4s ease;
+    width: 0%;
+  }
+  .counter-nums { font-size: 12px; font-weight: 500; white-space: nowrap; }
+  .counter-nums .used { color: var(--text); }
+  .counter-nums .sep { color: var(--muted); }
+  .counter-nums .total { color: var(--muted); }
+  .counter-reset { font-size: 11px; color: var(--muted); margin-left: auto; cursor: pointer; letter-spacing: 0.05em; border: none; background: none; font-family: var(--font); }
+  .counter-reset:hover { color: var(--text); }
+
+  .warn { padding: 9px 24px; font-size: 12px; color: #fbbf24; background: #fbbf2412; border-bottom: 1px solid #fbbf2430; letter-spacing: 0.03em; display: none; }
+
+  .mode-bar { padding: 12px 24px; display: flex; gap: 8px; border-bottom: 1px solid var(--border); flex-wrap: wrap; }
+  .mode-btn { padding: 6px 14px; border-radius: 4px; border: 1px solid var(--border2); background: transparent; font-family: var(--font); font-size: 12px; color: var(--muted); cursor: pointer; letter-spacing: 0.05em; transition: all 0.15s; }
+  .mode-btn:hover { color: var(--text); }
+  .mode-btn.act-jp { color: #f472b6; border-color: #f472b660; background: #f472b610; }
+  .mode-btn.act-cn { color: #fb923c; border-color: #fb923c60; background: #fb923c10; }
+  .mode-btn.act-both { color: #a78bfa; border-color: #a78bfa60; background: #a78bfa10; }
+
+  .status-bar { padding: 11px 24px; display: flex; align-items: center; gap: 12px; border-bottom: 1px solid var(--border); }
+  .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--muted); flex-shrink: 0; transition: background 0.3s; }
+  .dot.listening { background: var(--accent-id); box-shadow: 0 0 8px var(--accent-id); animation: blink 1.4s infinite; }
+  .dot.processing { background: var(--accent-both); box-shadow: 0 0 8px var(--accent-both); }
+  .dot.speaking { background: #60a5fa; box-shadow: 0 0 8px #60a5fa; animation: blink 1s infinite; }
+  @keyframes blink { 0%,100%{opacity:1}50%{opacity:0.3} }
+  .status-txt { font-size: 12px; color: var(--muted); letter-spacing: 0.04em; }
+  .wave { display: flex; gap: 3px; align-items: center; margin-left: auto; height: 18px; }
+  .wb { width: 3px; border-radius: 2px; background: var(--border2); transition: height 0.1s; }
+
+  .interim-row { padding: 9px 24px; border-bottom: 1px solid var(--border); min-height: 36px; display: flex; align-items: center; }
+  .interim-txt { font-size: 12px; color: var(--muted); font-style: italic; letter-spacing: 0.03em; }
+
+  .controls { padding: 13px 24px; display: flex; gap: 10px; border-bottom: 1px solid var(--border); }
+  .btn-main {
+    flex: 1; padding: 11px 16px; border-radius: 6px; border: 1px solid var(--border2);
+    background: var(--surface2); font-family: var(--font); font-size: 13px; font-weight: 500;
+    color: var(--text); cursor: pointer; letter-spacing: 0.07em;
+    display: flex; align-items: center; justify-content: center; gap: 8px; transition: all 0.15s;
+  }
+  .btn-main:hover { background: #22222e; }
+  .btn-main.running { border-color: #f4726660; color: #f47266; background: #f4726610; }
+  .btn-sm { padding: 11px 14px; border-radius: 6px; border: 1px solid var(--border); background: transparent; color: var(--muted); cursor: pointer; font-size: 15px; transition: all 0.15s; }
+  .btn-sm:hover { color: var(--text); border-color: var(--border2); }
+
+  .log { flex: 1; overflow-y: auto; padding: 16px 24px; display: flex; flex-direction: column; gap: 12px; }
+  .log::-webkit-scrollbar { width: 4px; }
+  .log::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 2px; }
+
+  .empty { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; color: var(--muted); text-align: center; gap: 12px; padding: 3rem 0; }
+  .empty-icon { font-size: 34px; opacity: 0.35; }
+  .empty-txt { font-size: 12px; letter-spacing: 0.04em; line-height: 2; }
+
+  .msg { padding: 12px 16px; border-radius: 6px; background: var(--surface); border: 1px solid var(--border); animation: fadein 0.22s ease; }
+  @keyframes fadein { from{opacity:0;transform:translateY(5px)}to{opacity:1;transform:translateY(0)} }
+  .msg.from-id { border-left: 3px solid var(--accent-id); }
+  .msg.from-jp { border-left: 3px solid var(--accent-jp); }
+  .msg.from-cn { border-left: 3px solid var(--accent-cn); }
+
+  .msg-meta { font-size: 10px; color: var(--muted); letter-spacing: 0.08em; text-transform: uppercase; margin-bottom: 6px; display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+  .msg-time { margin-left: auto; opacity: 0.55; }
+  .msg-chars { font-size: 10px; color: var(--muted); opacity: 0.6; }
+  .msg-original { font-size: 12px; color: var(--muted); margin-bottom: 6px; font-style: italic; }
+  .msg-translated { font-size: 15px; color: var(--text); line-height: 1.55; font-family: 'Noto Sans JP','Noto Sans SC',var(--font); }
+  .msg-phonetic { font-size: 11px; color: var(--muted); margin-top: 4px; letter-spacing: 0.04em; }
+  .msg-divider { border: none; border-top: 1px solid var(--border); margin: 8px 0; }
+  .badge { font-size: 10px; padding: 2px 7px; border-radius: 3px; letter-spacing: 0.05em; }
+  .badge-id { background: #4ade8018; color: #4ade80; border: 1px solid #4ade8035; }
+  .badge-jp { background: #f472b618; color: #f472b6; border: 1px solid #f472b635; }
+  .badge-cn { background: #fb923c18; color: #fb923c; border: 1px solid #fb923c35; }
+
+  .limit-warn { padding: 10px 24px; font-size: 12px; color: #f87171; background: #f8717112; border-top: 1px solid #f8717130; display: none; letter-spacing: 0.03em; }
+
+  .email-row {
+    padding: 10px 24px;
+    border-bottom: 1px solid var(--border);
+    display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
+  }
+  .email-label { font-size: 11px; color: var(--muted); letter-spacing: 0.07em; white-space: nowrap; }
+  .email-input {
+    flex: 1; min-width: 160px;
+    background: var(--surface2); border: 1px solid var(--border2);
+    border-radius: 5px; padding: 6px 10px;
+    font-size: 12px; font-family: var(--font); color: var(--text); outline: none;
+  }
+  .email-input:focus { border-color: rgba(255,255,255,0.28); }
+  .email-btn { padding: 6px 12px; border-radius: 5px; border: 1px solid var(--border2); background: var(--surface2); font-family: var(--font); font-size: 11px; color: var(--muted); cursor: pointer; letter-spacing: 0.05em; white-space: nowrap; }
+  .email-btn:hover { color: var(--text); }
+  .email-status { font-size: 11px; width: 100%; padding-left: 2px; min-height: 16px; }
+
+  @media(max-width:480px) {
+    .header,.counter-bar,.email-row,.mode-bar,.status-bar,.controls,.log,.interim-row { padding-left:14px;padding-right:14px; }
+  }
+
+  /* password screen */
+  .lock-screen {
+    position: fixed; inset: 0; background: var(--bg);
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    z-index: 9999; gap: 20px; padding: 24px;
+  }
+  .lock-icon { font-size: 40px; opacity: 0.5; margin-bottom: 4px; }
+  .lock-title { font-size: 13px; letter-spacing: 0.14em; color: var(--muted); text-transform: uppercase; }
+  .lock-input {
+    width: 100%; max-width: 280px;
+    background: var(--surface2); border: 1px solid var(--border2);
+    border-radius: 6px; padding: 11px 16px;
+    font-size: 15px; font-family: var(--font);
+    color: var(--text); outline: none; text-align: center;
+    letter-spacing: 0.1em;
+  }
+  .lock-input:focus { border-color: rgba(255,255,255,0.3); }
+  .lock-btn {
+    width: 100%; max-width: 280px;
+    padding: 11px; border-radius: 6px;
+    border: 1px solid var(--border2); background: var(--surface2);
+    font-family: var(--font); font-size: 13px; font-weight: 500;
+    color: var(--text); cursor: pointer; letter-spacing: 0.08em;
+    transition: all 0.15s;
+  }
+  .lock-btn:hover { background: #22222e; }
+  .lock-err { font-size: 12px; color: #f87171; letter-spacing: 0.05em; min-height: 18px; }
+</style>
+</head>
+<body>
+
+<!-- PASSWORD SCREEN -->
+<div class="lock-screen" id="lock-screen">
+  <div class="lock-icon">🔒</div>
+  <div class="lock-title">Live Interpreter · Private</div>
+  <input type="password" class="lock-input" id="lock-input" placeholder="Masukkan password"
+    onkeydown="if(event.key==='Enter') checkPass()">
+  <button class="lock-btn" onclick="checkPass()">MASUK</button>
+  <div class="lock-err" id="lock-err"></div>
+</div>
+
+<div id="main-app" style="display:none; flex-direction:column; flex:1;">
+
+<div class="header">
+  <div class="logo"><span>LIVE</span> INTERPRETER &nbsp;·&nbsp; ID · JP · CN</div>
+  <div class="powered">engine: <b>Google Translate</b> · UNLIMITED</div>
+</div>
+
+<div class="counter-bar">
+  <span class="counter-label">KALIMAT HARI INI</span>
+  <div class="counter-track"><div class="counter-fill" id="counter-fill"></div></div>
+  <span class="counter-nums">
+    <span class="used" id="used-num">0</span>
+    <span class="sep"> kalimat</span>
+  </span>
+  <button class="counter-reset" onclick="resetCounter()" title="Reset counter">↺ RESET</button>
+</div>
+
+<div id="warn-browser" class="warn">⚠ Gunakan Chrome atau Edge. Firefox tidak mendukung Web Speech API.</div>
+
+<div class="mode-bar">
+  <button class="mode-btn act-jp" id="mode-jp" onclick="setMode('jp')">ID ↔ JP &nbsp;🇮🇩🇯🇵</button>
+  <button class="mode-btn" id="mode-cn" onclick="setMode('cn')">ID ↔ CN &nbsp;🇮🇩🇨🇳</button>
+  <button class="mode-btn" id="mode-both" onclick="setMode('both')">ID ↔ JP + CN &nbsp;🇯🇵🇨🇳</button>
+</div>
+
+<div class="status-bar">
+  <div class="dot" id="dot"></div>
+  <span class="status-txt" id="status-txt">Pilih mode lalu tekan START</span>
+  <div class="wave" id="wave">
+    <div class="wb" id="w1" style="height:3px"></div>
+    <div class="wb" id="w2" style="height:3px"></div>
+    <div class="wb" id="w3" style="height:3px"></div>
+    <div class="wb" id="w4" style="height:3px"></div>
+    <div class="wb" id="w5" style="height:3px"></div>
+    <div class="wb" id="w6" style="height:3px"></div>
+    <div class="wb" id="w7" style="height:3px"></div>
+  </div>
+</div>
+
+<div class="interim-row">
+  <span class="interim-txt" id="interim-txt">—</span>
+</div>
+
+<div class="controls">
+  <button class="btn-main" id="btn-main" onclick="toggle()">
+    <span id="btn-icon">▶</span>
+    <span id="btn-lbl">START INTERPRETER</span>
+  </button>
+  <button class="btn-sm" onclick="toggleMute()" id="btn-mute" title="Mute/unmute">🔊</button>
+  <button class="btn-sm" onclick="clearLog()" title="Hapus log">🗑</button>
+</div>
+
+<div class="log" id="log">
+  <div class="empty" id="empty">
+    <div class="empty-icon">🎙</div>
+    <div class="empty-txt">
+      100% gratis · tanpa API key<br>
+      Pilih mode bahasa → tekan START<br>
+      Deteksi bahasa otomatis dari jeda suara
+    </div>
+  </div>
+</div>
+
+</div><!-- end main-app -->
+
+<script>
+const SpeechRec = window.SpeechRecognition || window.webkitSpeechRecognition;
+if (!SpeechRec) document.getElementById('warn-browser').style.display = 'block';
+
+const TODAY_KEY = 'interp_date';
+const CHARS_KEY = 'interp_chars';
+
+let sentenceCount = 0;
+
+let mode = 'jp';
+let isRunning = false;
+let rec = null;
+let isSpeaking = false;
+let speakQ = [];
+let visInt = null;
+let processing = false;
+let muted = false;
+let charsUsed = 0;
+let pendingText = '';
+let pendingTimer = null;
+let lastProcessedText = '';
+let lastProcessedTime = 0;
+
+function loadCounter() {
+  const today = new Date().toDateString();
+  const saved = localStorage.getItem(TODAY_KEY);
+  if (saved !== today) {
+    localStorage.setItem(TODAY_KEY, today);
+    localStorage.setItem(CHARS_KEY, '0');
+    sentenceCount = 0;
+  } else {
+    sentenceCount = parseInt(localStorage.getItem(CHARS_KEY) || '0');
+  }
+  updateCounterUI();
+}
+
+function addSentence() {
+  sentenceCount++;
+  localStorage.setItem(CHARS_KEY, sentenceCount.toString());
+  updateCounterUI();
+}
+
+function updateCounterUI() {
+  document.getElementById('used-num').textContent = sentenceCount;
+  const fill = document.getElementById('counter-fill');
+  // Bar hanya sebagai animasi aktif, bukan indikator limit
+  fill.style.width = Math.min(sentenceCount * 2, 100) + '%';
+  fill.style.background = '#4ade80';
+}
+
+function resetCounter() {
+  sentenceCount = 0;
+  localStorage.setItem(CHARS_KEY, '0');
+  updateCounterUI();
+}
+
+function setMode(m) {
+  mode = m;
+  ['jp','cn','both'].forEach(x => {
+    document.getElementById('mode-'+x).className = 'mode-btn' + (x===m ? ' act-'+m : '');
+  });
+  if (isRunning) { recCycle = 0; stopRec(); setTimeout(startRec, 300); }
+}
+
+function setStatus(state, text) {
+  const d = document.getElementById('dot');
+  d.className = 'dot' + (state ? ' '+state : '');
+  document.getElementById('status-txt').textContent = text;
+}
+
+function startWave() {
+  visInt = setInterval(() => {
+    for (let i=1;i<=7;i++) {
+      const h = isRunning && !isSpeaking ? Math.floor(Math.random()*15)+3 : 3;
+      document.getElementById('w'+i).style.height = h+'px';
+    }
+  }, 110);
+}
+
+function stopWave() {
+  clearInterval(visInt);
+  for(let i=1;i<=7;i++) document.getElementById('w'+i).style.height='3px';
+}
+
+function toggle() { isRunning ? stop() : start(); }
+
+function start() {
+  if (!SpeechRec) { alert('Gunakan Chrome atau Edge.'); return; }
+  isRunning = true;
+  document.getElementById('btn-main').classList.add('running');
+  document.getElementById('btn-icon').textContent = '■';
+  document.getElementById('btn-lbl').textContent = 'STOP INTERPRETER';
+  startRec(); startWave();
+}
+
+function stop() {
+  isRunning = false;
+  stopRec(); stopWave();
+  clearTimeout(pendingTimer);
+  pendingText = '';
+  processing = false;
+  lastProcessedText = '';
+  lastProcessedTime = 0;
+  setStatus('', 'Interpreter dihentikan');
+  document.getElementById('btn-main').classList.remove('running');
+  document.getElementById('btn-icon').textContent = '▶';
+  document.getElementById('btn-lbl').textContent = 'START INTERPRETER';
+  document.getElementById('interim-txt').textContent = '—';
+}
+
+function getLangForMode() {
+  // Kembalikan array [langIndo, langAsing]
+  if (mode === 'jp') return ['id-ID', 'ja-JP'];
+  if (mode === 'cn') return ['id-ID', 'zh-CN'];
+  return ['id-ID', 'ja-JP']; // both: utamakan JP dulu
+}
+
+let recCycle = 0; // 0 = dengarkan ID, 1 = dengarkan asing
+let cycleTimer = null;
+
+function startRec() {
+  if (!SpeechRec || !isRunning) return;
+  const [langID, langAsing] = getLangForMode();
+  const useLang = recCycle === 0 ? langID : langAsing;
+  const label = recCycle === 0 ? 'Mendengarkan (ID)...' : `Mendengarkan (${mode === 'jp' ? 'JP' : 'CN'})...`;
+
+  rec = new SpeechRec();
+  rec.continuous = false;
+  rec.interimResults = true;
+  rec.lang = useLang;
+  rec.maxAlternatives = 1;
+
+  rec.onstart = () => setStatus('listening', label);
+
+  rec.onresult = (e) => {
+    if (isSpeaking) return;
+    for (let i = e.resultIndex; i < e.results.length; i++) {
+      const t = e.results[i][0].transcript.trim();
+      if (!e.results[i].isFinal) {
+        document.getElementById('interim-txt').textContent = t;
+        continue;
+      }
+      if (t.length < 3) continue;
+      if (t.length > (pendingText || '').length) pendingText = t;
+      clearTimeout(pendingTimer);
+      pendingTimer = setTimeout(() => {
+        const final = pendingText;
+        pendingText = '';
+        const now = Date.now();
+        const tooSimilar = lastProcessedText &&
+          (final === lastProcessedText ||
+           final.startsWith(lastProcessedText) ||
+           lastProcessedText.startsWith(final)) &&
+          (now - lastProcessedTime < 4000);
+        if (tooSimilar) return;
+        lastProcessedText = final;
+        lastProcessedTime = now;
+        document.getElementById('interim-txt').textContent = '⌛ "' + final + '"';
+        handleFinal(final);
+      }, 800);
+    }
+  };
+
+  rec.onerror = (e) => {
+    if (e.error === 'no-speech') {
+      // Tidak ada suara — ganti sisi dan coba lagi
+      switchCycle();
+      return;
+    }
+    setTimeout(() => { if (isRunning) startRec(); }, 600);
+  };
+
+  rec.onend = () => {
+    if (!isRunning || isSpeaking) return;
+    // Ganti sisi setelah setiap sesi
+    switchCycle();
+  };
+
+  try { rec.start(); } catch(x) {}
+}
+
+function switchCycle() {
+  if (!isRunning || isSpeaking) return;
+  recCycle = recCycle === 0 ? 1 : 0;
+  clearTimeout(cycleTimer);
+  cycleTimer = setTimeout(() => {
+    if (isRunning && !isSpeaking) startRec();
+  }, 300);
+}
+
+function stopRec() {
+  clearTimeout(cycleTimer);
+  recCycle = 0;
+  if (rec) { try{rec.stop()}catch(x){} rec = null; }
+}
+
+function detectLang(text) {
+  const jp = (text.match(/[\u3040-\u30ff]/g)||[]).length;
+  const cjk = (text.match(/[\u4e00-\u9fff]/g)||[]).length;
+  if (jp > 1) return 'jp';
+  if (cjk > 2) return 'cn';
+  return 'id';
+}
+
+async function translate(text, from, to) {
+  const url = `https://translate.googleapis.com/translate_a/single?client=gtx&sl=${from}&tl=${to}&dt=t&q=${encodeURIComponent(text)}`;
+  const res = await fetch(url);
+  const data = await res.json();
+  // Google returns nested array: [[["translated","original",...],...],...]
+  return data[0].map(x => x[0]).join('');
+}
+
+async function handleFinal(text) {
+  if (!text || text.length < 3) { processing = false; return; }
+  setStatus('processing', 'Menerjemahkan...');
+
+  const lang = detectLang(text);
+
+  // Bebaskan processing segera agar kalimat berikutnya bisa masuk
+  processing = false;
+  document.getElementById('interim-txt').textContent = '—';
+
+  try {
+    let result = {};
+
+    if (lang === 'id') {
+      if (mode === 'jp') {
+        const translated = await translate(text, 'id', 'ja');
+        result = { dir: 'id-jp', translated, phonetic: '' };
+      } else if (mode === 'cn') {
+        const translated = await translate(text, 'id', 'zh-CN');
+        result = { dir: 'id-cn', translated, phonetic: '' };
+      } else {
+        const [jp, cn] = await Promise.all([
+          translate(text, 'id', 'ja'),
+          translate(text, 'id', 'zh-CN')
+        ]);
+        result = { dir: 'id-both', jp, cn };
+        addSentence();
+        addMessage(text, result, lang);
+        if (!muted) speakText(jp, 'ja-JP');
+        return;
+      }
+    } else if (lang === 'jp') {
+      const translated = await translate(text, 'ja', 'id');
+      result = { dir: 'jp-id', translated };
+    } else {
+      const translated = await translate(text, 'zh-CN', 'id');
+      result = { dir: 'cn-id', translated };
+    }
+
+    addSentence();
+    addMessage(text, result, lang);
+
+    if (!muted) {
+      if (result.dir === 'id-jp') speakText(result.translated, 'ja-JP');
+      else if (result.dir === 'id-cn') speakText(result.translated, 'zh-CN');
+      else speakText(result.translated, 'id-ID');
+    } else {
+      setStatus('listening', 'Mendengarkan...');
+    }
+  } catch(err) {
+    setStatus('listening', 'Gagal terjemahkan — coba lagi...');
+  }
+}
+
+function speakText(text, lang) {
+  speakQ.push({text, lang});
+  if (!isSpeaking) processQ();
+}
+
+function processQ() {
+  if (!speakQ.length) {
+    isSpeaking = false;
+    if (isRunning) {
+      setStatus('listening', 'Mendengarkan...');
+      recCycle = 0;
+      setTimeout(() => { if (isRunning) startRec(); }, 500);
+    }
+    return;
+  }
+  isSpeaking = true;
+  if (rec) { try{rec.stop()}catch(x){} rec = null; }
+  const {text, lang} = speakQ.shift();
+  setStatus('speaking', 'Memutar terjemahan...');
+  const u = new SpeechSynthesisUtterance(text);
+  u.lang = lang; u.rate = 0.9;
+  u.onend = () => setTimeout(processQ, 500);
+  u.onerror = () => setTimeout(processQ, 500);
+  window.speechSynthesis.speak(u);
+}
+
+function addMessage(original, parsed, detectedLang) {
+  const log = document.getElementById('log');
+  const empty = document.getElementById('empty');
+  if (empty) empty.remove();
+
+  const now = new Date().toLocaleTimeString('id-ID',{hour:'2-digit',minute:'2-digit',second:'2-digit'});
+  const div = document.createElement('div');
+  div.className = 'msg from-' + detectedLang;
+
+  const badge = detectedLang==='id'
+    ? '<span class="badge badge-id">KAMU · ID</span>'
+    : detectedLang==='jp'
+    ? '<span class="badge badge-jp">LAWAN · JP</span>'
+    : '<span class="badge badge-cn">LAWAN · CN</span>';
+
+  if (parsed.dir === 'id-both') {
+    div.innerHTML = `<div class="msg-meta">${badge}<span class="msg-time">${now}</span></div>
+    <div class="msg-original">"${original}"</div>
+    <div class="msg-translated">🇯🇵 ${parsed.jp}</div>
+    <hr class="msg-divider">
+    <div class="msg-translated">🇨🇳 ${parsed.cn}</div>`;
+  } else {
+    const flag = parsed.dir==='id-jp'?'🇯🇵':parsed.dir==='id-cn'?'🇨🇳':'🇮🇩';
+    div.innerHTML = `<div class="msg-meta">${badge}<span class="msg-time">${now}</span></div>
+    <div class="msg-original">"${original}"</div>
+    <div class="msg-translated">${flag} ${parsed.translated}</div>`;
+  }
+
+  log.appendChild(div);
+  log.scrollTop = log.scrollHeight;
+}
+
+function clearLog() {
+  document.getElementById('log').innerHTML =
+    '<div class="empty" id="empty"><div class="empty-icon">🎙</div><div class="empty-txt">Log dikosongkan — siap digunakan kembali</div></div>';
+}
+
+function toggleMute() {
+  muted = !muted;
+  document.getElementById('btn-mute').textContent = muted ? '🔇' : '🔊';
+}
+
+// --- PASSWORD ---
+const PASS_HASH = '7a4f2c9b1e6d3f8a0b5c2e7d4f1a9c3b6e8d2f5a7c0b4e1d9f6a3c8b2e5d7f0';
+
+async function hashStr(str) {
+  const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(str));
+  return Array.from(new Uint8Array(buf)).map(b=>b.toString(16).padStart(2,'0')).join('');
+}
+
+async function checkPass() {
+  const val = document.getElementById('lock-input').value;
+  const h = await hashStr(val);
+  // compare with stored hash of "andono2026"
+  const correct = await hashStr('andono2026');
+  if (h === correct) {
+    document.getElementById('lock-screen').style.display = 'none';
+    document.getElementById('main-app').style.display = 'flex';
+    sessionStorage.setItem('interp_auth', '1');
+    loadCounter();
+  } else {
+    const err = document.getElementById('lock-err');
+    err.textContent = 'Password salah. Coba lagi.';
+    document.getElementById('lock-input').value = '';
+    document.getElementById('lock-input').focus();
+    setTimeout(() => err.textContent = '', 2500);
+  }
+}
+
+// auto-unlock jika sudah login di session ini
+if (sessionStorage.getItem('interp_auth') === '1') {
+  document.getElementById('lock-screen').style.display = 'none';
+  document.getElementById('main-app').style.display = 'flex';
+  loadCounter();
+}
+</script>
+</body>
+</html>
