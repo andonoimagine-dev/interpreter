@@ -733,27 +733,35 @@ async function startRecognition(lang) {
   stopRecognition();
 
   // Setup mic dengan noise cancelling + VU meter
-  try {
-    audioStream = await navigator.mediaDevices.getUserMedia({
-      audio: {
-        echoCancellation: true,
-        noiseSuppression: true,
-        autoGainControl: true,
-        channelCount: 1
-      }
-    });
-    // Verifikasi constraint apa yang benar-benar aktif
-    const track = audioStream.getAudioTracks()[0];
-    const settings = track.getSettings();
-    const ncActive = settings.noiseSuppression === true ||
-                     settings.echoCancellation === true ||
-                     settings.autoGainControl === true;
-    updateNCBadge(ncActive, settings);
-    setupVUMeter(audioStream);
-  } catch(err) {
-    console.warn('Mic permission error:', err);
-    debugLog('MIC ERR: ' + (err.message||err), 'err');
-    updateNCBadge(false);
+  // CATATAN: Di Android, getUserMedia + Web Speech API tidak bisa jalan bersamaan
+  // Solusi: skip getUserMedia untuk Android
+  if (!IS_ANDROID) {
+    try {
+      audioStream = await navigator.mediaDevices.getUserMedia({
+        audio: {
+          echoCancellation: true,
+          noiseSuppression: true,
+          autoGainControl: true,
+          channelCount: 1
+        }
+      });
+      const track = audioStream.getAudioTracks()[0];
+      const settings = track.getSettings();
+      const ncActive = settings.noiseSuppression === true ||
+                       settings.echoCancellation === true ||
+                       settings.autoGainControl === true;
+      updateNCBadge(ncActive, settings);
+      setupVUMeter(audioStream);
+      debugLog('mic setup OK (desktop)', 'ok');
+    } catch(err) {
+      debugLog('MIC ERR: ' + (err.message||err), 'err');
+      console.warn('Mic permission error:', err);
+      updateNCBadge(false);
+    }
+  } else {
+    // Android: noise cancelling via recognition constraints saja
+    updateNCBadge(true, { noiseSuppression: true, echoCancellation: true, autoGainControl: true });
+    debugLog('Android: skip getUserMedia, using SR only', 'warn');
   }
 
   const r = new SR();
@@ -771,6 +779,31 @@ async function startRecognition(lang) {
     setStatus('listening', labelTxt);
     recBusy = false;
     debugLog('rec.start lang=' + lang);
+    // Android: animasi VU bar manual saat listening
+    if (IS_ANDROID) startAndroidVU();
+  };
+
+  r.onsoundstart = () => {
+    debugLog('soundstart', 'ok');
+    setLiveText('🎙 Suara terdeteksi...', 'partial');
+  };
+
+  r.onspeechstart = () => {
+    debugLog('speechstart', 'ok');
+    setLiveText('🎙 Bicara terdeteksi...', 'partial');
+  };
+
+  r.onspeechend = () => {
+    debugLog('speechend', 'warn');
+    // Di Android, onspeechend artinya user berhenti bicara
+    // Paksa stop recognition agar onend trigger dan dapat hasil
+    if (IS_ANDROID) {
+      try { r.stop(); } catch(x) {}
+    }
+  };
+
+  r.onsoundend = () => {
+    debugLog('soundend');
   };
 
   r.onresult = (e) => {
@@ -891,6 +924,7 @@ function stopRecognition() {
 
 function cleanupAudio() {
   cancelAnimationFrame(vuRAF);
+  stopAndroidVU();
   if (audioStream) {
     audioStream.getTracks().forEach(t => t.stop());
     audioStream = null;
@@ -921,7 +955,7 @@ function setupVUMeter(stream) {
   vadSilenceStart = 0;
 
   function tick() {
-    if (!State.running) return;
+    if (!State.running || !analyser) return;
     analyser.getByteFrequencyData(data);
     // Hitung energi di rentang vokal manusia
     const voiceStart = Math.floor(300 / (audioCtx.sampleRate / analyser.fftSize));
@@ -998,6 +1032,28 @@ function resetVUBars() {
     bar.style.height = '3px';
   }
   $('dot').style.transform = 'scale(1)';
+  stopAndroidVU();
+}
+
+let androidVUInterval = null;
+function startAndroidVU() {
+  stopAndroidVU();
+  let tick = 0;
+  androidVUInterval = setInterval(() => {
+    if (!State.running) { stopAndroidVU(); return; }
+    tick++;
+    // Animasi gentle pulse saat listening
+    for (let i = 1; i <= 7; i++) {
+      const h = 3 + Math.abs(Math.sin((tick + i * 2) * 0.3)) * 8;
+      const bar = $('vu' + i);
+      bar.style.height = h + 'px';
+      bar.classList.add('active');
+    }
+  }, 150);
+}
+
+function stopAndroidVU() {
+  if (androidVUInterval) { clearInterval(androidVUInterval); androidVUInterval = null; }
 }
 
 // ===== TRANSLATION =====
