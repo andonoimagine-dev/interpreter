@@ -844,8 +844,11 @@ function stopRun() {
   cleanupAudio();
   clearTimeout(pendingTmr);
   clearTimeout(silenceTmr);
+  clearTimeout(sentenceBufferTmr);
   pending = '';
   lastPartial = '';
+  sentenceBuffer = '';
+  sentenceBufferTime = 0;
   speechQ.length = 0;
   var bm = ge('btn-main');
   if (bm) { bm.classList.remove('run'); bm.classList.remove('init'); }
@@ -867,8 +870,11 @@ function restartFromConfig() {
   clearTimerA();
   clearTimeout(pendingTmr);
   clearTimeout(silenceTmr);
+  clearTimeout(sentenceBufferTmr);
   pending = '';
   lastPartial = '';
+  sentenceBuffer = '';
+  sentenceBufferTime = 0;
   setLiveText('', 'emp');
   var tb = ge('timer-bar'); var tp = ge('tap-panel'); var sr = ge('swap-row');
   if (S.mode === 'a') {
@@ -1185,39 +1191,64 @@ function stopRecognition() {
 }
 
 // -- TRIGGER FINAL -----------------------------------------
+// Sentence buffer: gabungkan potongan kalimat dalam window pendek
+var sentenceBuffer = '';
+var sentenceBufferTime = 0;
+var sentenceBufferTmr = null;
+var SENTENCE_BUFFER_MS = 1800; // 1.8 detik
+
 function triggerFinal() {
   var final = pending; pending = '';
   if (!final || final.length < 2) return;
   var now = Date.now();
+
   // Block exact duplicate dalam 3 detik
   if (final === lastFinal && now - lastFinalTime < 3000) {
-    dbg('dup exact: ' + final); return;
+    dbg('dup exact: ' + final);
+    return;
   }
-  // Kalau final baru adalah PERLUASAN dari lastFinal yang baru saja diproses (dalam 6 detik),
-  // artinya partial sebelumnya keburu di-trigger di tengah kalimat
-  // Solusi: hapus pesan log terakhir, lalu proses kalimat lengkap
-  var isExtension = lastFinal && now - lastFinalTime < 6000 &&
-                    final.length > lastFinal.length &&
-                    final.toLowerCase().indexOf(lastFinal.toLowerCase()) === 0;
-  if (isExtension) {
-    dbg('extension detected, replacing: "' + lastFinal + '" -> "' + final + '"', 'warn');
-    // Hapus pesan log terakhir
-    var log = ge('log');
-    if (log && log.firstChild && log.firstChild.classList && log.firstChild.classList.contains('msg')) {
-      log.removeChild(log.firstChild);
-      // Hapus juga dari transcript array
-      if (transcript.length) {
-        transcript.pop();
-        S.sentences = Math.max(0, S.sentences - 1);
-        updateStats();
-        saveHistory();
-      }
+
+  // Cek apakah final baru adalah perluasan dari yang ada di buffer
+  if (sentenceBuffer && now - sentenceBufferTime < SENTENCE_BUFFER_MS + 500) {
+    // Cek extension (final mengandung buffer)
+    if (final.length > sentenceBuffer.length && final.toLowerCase().indexOf(sentenceBuffer.toLowerCase()) === 0) {
+      // Replace buffer dengan versi lengkap
+      dbg('buffer-replace: "' + sentenceBuffer + '" -> "' + final + '"', 'warn');
+      sentenceBuffer = final;
+    } else if (sentenceBuffer.length > final.length && sentenceBuffer.toLowerCase().indexOf(final.toLowerCase()) === 0) {
+      // Final lebih pendek tapi prefix sama - skip
+      dbg('buffer-skip-shorter: ' + final);
+      return;
+    } else {
+      // Kalimat baru - gabungkan dengan buffer (lanjutan dari kalimat sebelumnya)
+      dbg('buffer-append: "' + sentenceBuffer + '" + "' + final + '"', 'warn');
+      sentenceBuffer = sentenceBuffer + ' ' + final;
     }
+    sentenceBufferTime = now;
+  } else {
+    // Mulai buffer baru
+    sentenceBuffer = final;
+    sentenceBufferTime = now;
   }
-  lastFinal = final;
-  lastFinalTime = now;
-  dbg('FINAL: ' + final, 'ok');
-  handleFinal(final);
+
+  // Reset timer - tunggu kalau ada lanjutan
+  clearTimeout(sentenceBufferTmr);
+  sentenceBufferTmr = setTimeout(function() {
+    var combined = sentenceBuffer;
+    sentenceBuffer = '';
+    sentenceBufferTime = 0;
+    if (!combined || combined.length < 2) return;
+    // Final cek dedup
+    var checkNow = Date.now();
+    if (combined === lastFinal && checkNow - lastFinalTime < 3000) {
+      dbg('post-buffer dup: ' + combined);
+      return;
+    }
+    lastFinal = combined;
+    lastFinalTime = checkNow;
+    dbg('FINAL (buffered): ' + combined, 'ok');
+    handleFinal(combined);
+  }, SENTENCE_BUFFER_MS);
 }
 
 // -- TRANSLATION -------------------------------------------
