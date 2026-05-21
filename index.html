@@ -5,7 +5,8 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
-<title>Live Interpreter — Andono Imagine</title>
+<meta name="theme-color" content="#0a0a0f">
+<title>Live Interpreter - Andono Imagine</title>
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:ital,wght@0,400;0,500;1,400&family=Noto+Sans+JP&family=Noto+Sans+SC&display=swap" rel="stylesheet">
 <style>
 :root {
@@ -14,9 +15,15 @@
   --tx:#e8e8f0; --mu:#6b6b80;
   --id:#4ade80; --jp:#f472b6; --cn:#fb923c; --bo:#a78bfa;
   --fn:'IBM Plex Mono',monospace;
+  --live-fs:20px;
+  --msg-fs:16px;
 }
 *{box-sizing:border-box;margin:0;padding:0;}
 body{background:var(--bg);color:var(--tx);font-family:var(--fn);min-height:100vh;display:flex;flex-direction:column;overflow-x:hidden;}
+
+/* XL mode (meeting) */
+body.xl{--live-fs:28px;--msg-fs:20px;}
+body.xl .ltxt{line-height:1.45;}
 
 /* LOCK */
 .ls{position:fixed;inset:0;background:var(--bg);display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:9999;gap:18px;padding:24px;transition:opacity .4s;}
@@ -36,7 +43,9 @@ body{background:var(--bg);color:var(--tx);font-family:var(--fn);min-height:100vh
 .hdr{padding:11px 18px;border-bottom:1px solid var(--b1);display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;flex-shrink:0;}
 .logo{font-size:13px;letter-spacing:.1em;color:var(--mu);}
 .logo span{color:var(--tx);font-weight:500;}
-.brand{font-size:10px;color:var(--mu);letter-spacing:.06em;}
+.brand{font-size:10px;color:var(--mu);letter-spacing:.06em;display:flex;align-items:center;gap:6px;}
+.net-dot{width:6px;height:6px;border-radius:50%;background:var(--id);}
+.net-dot.off{background:#f87171;animation:blink 1.4s infinite;}
 
 /* STAT BAR */
 .sbar{padding:7px 18px;border-bottom:1px solid var(--b1);display:flex;align-items:center;gap:10px;font-size:11px;color:var(--mu);letter-spacing:.05em;flex-shrink:0;flex-wrap:wrap;}
@@ -45,7 +54,7 @@ body{background:var(--bg);color:var(--tx);font-family:var(--fn);min-height:100vh
 .ncb.on{color:#60a5fa;border-color:rgba(96,165,250,.4);background:rgba(96,165,250,.08);}
 .ncd{width:5px;height:5px;border-radius:50%;background:var(--mu);flex-shrink:0;transition:all .3s;}
 .ncb.on .ncd{background:#60a5fa;box-shadow:0 0 5px #60a5fa;animation:blink 1.8s infinite;}
-.sbtns{margin-left:auto;display:flex;gap:6px;}
+.sbtns{margin-left:auto;display:flex;gap:6px;flex-wrap:wrap;}
 .sbtn{background:none;border:1px solid var(--b1);border-radius:4px;color:var(--mu);font-family:var(--fn);font-size:10px;padding:2px 7px;cursor:pointer;letter-spacing:.04em;transition:all .15s;}
 .sbtn:hover{color:var(--tx);border-color:var(--b2);}
 .sbtn.on{color:var(--id);border-color:rgba(74,222,128,.35);}
@@ -62,10 +71,11 @@ body{background:var(--bg);color:var(--tx);font-family:var(--fn);min-height:100vh
 .chip.jp{color:var(--jp);border-color:rgba(244,114,182,.4);background:rgba(244,114,182,.08);}
 .chip.cn{color:var(--cn);border-color:rgba(251,146,60,.4);background:rgba(251,146,60,.08);}
 .chip.bo{color:var(--bo);border-color:rgba(167,139,250,.4);background:rgba(167,139,250,.08);}
+.chip.jpcn{color:#f59e9e;border-color:rgba(245,158,158,.4);background:rgba(245,158,158,.08);}
 .chip.ma{color:var(--id);border-color:rgba(74,222,128,.4);background:rgba(74,222,128,.08);}
 .chip.mb{color:var(--bo);border-color:rgba(167,139,250,.4);background:rgba(167,139,250,.08);}
 
-/* SLIDER / SELECT */
+/* SLIDER */
 .tslider{flex:1;min-width:80px;accent-color:var(--id);cursor:pointer;}
 .tval{font-size:13px;font-weight:500;color:var(--id);min-width:48px;text-align:right;}
 .spsel{background:var(--sur2);border:1px solid var(--b2);border-radius:4px;color:var(--tx);font-family:var(--fn);font-size:11px;padding:3px 6px;cursor:pointer;}
@@ -75,24 +85,35 @@ body{background:var(--bg);color:var(--tx);font-family:var(--fn);min-height:100vh
 .ttrack{flex:1;height:4px;background:var(--sur2);border-radius:2px;overflow:hidden;min-width:60px;}
 .tfill{height:100%;background:var(--id);transition:width .1s linear;}
 .tlang{font-size:12px;font-weight:500;min-width:56px;text-align:right;}
-.tsecs{font-size:11px;color:var(--mu);min-width:24px;text-align:right;}
+.tsecs{font-size:11px;color:var(--mu);min-width:36px;text-align:right;}
+.tsmart{font-size:9px;color:var(--bo);padding:1px 5px;border-radius:3px;background:rgba(167,139,250,.1);border:1px solid rgba(167,139,250,.3);display:none;}
+.tsmart.on{display:inline-block;animation:smart-pulse 1s infinite;}
+@keyframes smart-pulse{0%,100%{opacity:.7}50%{opacity:1}}
 
 /* TAP PANEL */
 .tappanel{display:flex;gap:10px;padding:10px 18px;border-bottom:1px solid var(--b1);flex-shrink:0;}
-.tapbtn{flex:1;padding:16px 8px;border-radius:8px;border:1px solid var(--b2);background:var(--sur2);font-family:var(--fn);cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:6px;transition:all .2s;color:var(--mu);user-select:none;-webkit-user-select:none;}
+.tapbtn{flex:1;padding:16px 8px;border-radius:8px;border:1px solid var(--b2);background:var(--sur2);font-family:var(--fn);cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:6px;transition:all .2s;color:var(--mu);user-select:none;-webkit-user-select:none;-webkit-tap-highlight-color:transparent;}
+.tapbtn:active{transform:scale(.97);}
 .tapflag{font-size:30px;}
 .taplbl{font-size:12px;letter-spacing:.08em;font-weight:500;}
 .tapst{font-size:11px;min-height:15px;opacity:.75;}
 .tapbtn.lid{border-color:rgba(74,222,128,.6);background:rgba(74,222,128,.1);color:var(--id);animation:ps 1.4s infinite;}
 .tapbtn.ljp{border-color:rgba(244,114,182,.6);background:rgba(244,114,182,.1);color:var(--jp);animation:ps 1.4s infinite;}
 .tapbtn.lcn{border-color:rgba(251,146,60,.6);background:rgba(251,146,60,.1);color:var(--cn);animation:ps 1.4s infinite;}
-@keyframes ps{0%,100%{opacity:1}50%{opacity:.7}}
+@keyframes ps{0%,100%{opacity:1}50%{opacity:.75}}
+
+/* SWAP BUTTON */
+.swap-btn{padding:10px 18px;border-bottom:1px solid var(--b1);display:none;flex-shrink:0;}
+.swap-btn.on{display:flex;justify-content:center;}
+.swap-btn button{padding:10px 22px;border-radius:999px;border:1px solid var(--b2);background:var(--sur2);color:var(--tx);font-family:var(--fn);font-size:12px;letter-spacing:.06em;cursor:pointer;display:flex;align-items:center;gap:8px;transition:all .15s;}
+.swap-btn button:hover{background:#1e1e2a;}
+.swap-btn button:active{transform:scale(.96);}
 
 /* LIVE BOX */
 .lbox{padding:14px 18px;border-bottom:1px solid var(--b1);min-height:80px;background:var(--sur);display:flex;flex-direction:column;justify-content:center;gap:5px;flex-shrink:0;transition:background .3s;}
 .lbox.act{background:rgba(74,222,128,.04);}
 .llbl{font-size:10px;color:var(--mu);letter-spacing:.1em;display:flex;align-items:center;gap:6px;}
-.ltxt{font-size:20px;color:var(--tx);line-height:1.4;font-family:'Noto Sans JP','Noto Sans SC',var(--fn);min-height:28px;word-break:break-word;}
+.ltxt{font-size:var(--live-fs);color:var(--tx);line-height:1.4;font-family:'Noto Sans JP','Noto Sans SC',var(--fn);min-height:28px;word-break:break-word;}
 .ltxt.emp{color:var(--mu);font-style:italic;font-size:13px;}
 .ltxt.par{color:#fbbf24;}
 .ltxt.fin{color:var(--id);}
@@ -103,6 +124,7 @@ body{background:var(--bg);color:var(--tx);font-family:var(--fn);min-height:100vh
 .dot.lis{background:var(--id);box-shadow:0 0 8px var(--id);animation:blink 1.4s infinite;}
 .dot.pro{background:var(--bo);box-shadow:0 0 8px var(--bo);}
 .dot.spk{background:#60a5fa;box-shadow:0 0 8px #60a5fa;animation:blink 1s infinite;}
+.dot.init{background:#fbbf24;box-shadow:0 0 8px #fbbf24;animation:blink .8s infinite;}
 @keyframes blink{0%,100%{opacity:1}50%{opacity:.3}}
 .stxt{font-size:12px;color:var(--mu);letter-spacing:.04em;flex:1;}
 .vu{display:flex;gap:3px;align-items:flex-end;height:20px;}
@@ -111,10 +133,11 @@ body{background:var(--bg);color:var(--tx);font-family:var(--fn);min-height:100vh
 
 /* CONTROLS */
 .ctrl{padding:12px 18px;display:flex;gap:10px;border-bottom:1px solid var(--b1);flex-shrink:0;}
-.bmain{flex:1;padding:12px 16px;border-radius:6px;border:1px solid var(--b2);background:var(--sur2);font-family:var(--fn);font-size:13px;font-weight:500;color:var(--tx);cursor:pointer;letter-spacing:.07em;display:flex;align-items:center;justify-content:center;gap:8px;transition:all .15s;}
+.bmain{flex:1;padding:12px 16px;border-radius:6px;border:1px solid var(--b2);background:var(--sur2);font-family:var(--fn);font-size:13px;font-weight:500;color:var(--tx);cursor:pointer;letter-spacing:.07em;display:flex;align-items:center;justify-content:center;gap:8px;transition:all .15s;-webkit-tap-highlight-color:transparent;}
 .bmain:hover{background:#1e1e2a;}
 .bmain.run{border-color:rgba(244,114,102,.5);color:#f47266;background:rgba(244,114,102,.08);}
-.bsm{padding:12px 13px;border-radius:6px;border:1px solid var(--b1);background:transparent;color:var(--mu);cursor:pointer;font-size:15px;transition:all .15s;}
+.bmain.init{border-color:rgba(251,191,36,.5);color:#fbbf24;background:rgba(251,191,36,.08);}
+.bsm{padding:12px 13px;border-radius:6px;border:1px solid var(--b1);background:transparent;color:var(--mu);cursor:pointer;font-size:15px;transition:all .15s;-webkit-tap-highlight-color:transparent;}
 .bsm:hover{color:var(--tx);border-color:var(--b2);}
 .bsm.on{color:var(--id);border-color:rgba(74,222,128,.4);}
 
@@ -132,8 +155,10 @@ body{background:var(--bg);color:var(--tx);font-family:var(--fn);min-height:100vh
 .msg.scn{border-left:3px solid var(--cn);}
 .mmeta{font-size:10px;color:var(--mu);letter-spacing:.07em;text-transform:uppercase;margin-bottom:6px;display:flex;align-items:center;gap:8px;}
 .mtime{margin-left:auto;opacity:.55;}
+.mreplay{background:none;border:1px solid var(--b2);border-radius:3px;color:var(--mu);font-family:var(--fn);font-size:10px;padding:1px 6px;cursor:pointer;letter-spacing:.04em;}
+.mreplay:hover{color:var(--id);border-color:rgba(74,222,128,.4);}
 .morig{font-size:13px;color:var(--mu);margin-bottom:6px;font-style:italic;}
-.mtrans{font-size:16px;line-height:1.5;font-family:'Noto Sans JP','Noto Sans SC',var(--fn);}
+.mtrans{font-size:var(--msg-fs);line-height:1.5;font-family:'Noto Sans JP','Noto Sans SC',var(--fn);}
 .mdiv{border:none;border-top:1px solid var(--b1);margin:7px 0;}
 .badge{font-size:10px;padding:2px 7px;border-radius:3px;letter-spacing:.05em;}
 .bid{background:rgba(74,222,128,.1);color:var(--id);border:1px solid rgba(74,222,128,.3);}
@@ -148,6 +173,18 @@ body{background:var(--bg);color:var(--tx);font-family:var(--fn);min-height:100vh
 .toast.warn{border-color:rgba(251,191,36,.4);color:#fbbf24;background:rgba(251,191,36,.08);}
 @keyframes ti{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
 
+/* CONFIRM */
+.confirm-overlay{position:fixed;inset:0;background:rgba(0,0,0,.6);display:none;align-items:center;justify-content:center;z-index:9000;padding:24px;}
+.confirm-overlay.on{display:flex;}
+.confirm-box{background:var(--sur);border:1px solid var(--b2);border-radius:10px;padding:24px;max-width:320px;width:100%;display:flex;flex-direction:column;gap:14px;animation:cb-in .2s ease;}
+@keyframes cb-in{from{opacity:0;transform:scale(.95)}to{opacity:1;transform:scale(1)}}
+.cb-title{font-size:14px;font-weight:500;color:var(--tx);letter-spacing:.04em;}
+.cb-msg{font-size:13px;color:var(--mu);line-height:1.5;}
+.cb-actions{display:flex;gap:10px;}
+.cb-btn{flex:1;padding:10px;border-radius:6px;border:1px solid var(--b2);background:var(--sur2);color:var(--tx);font-family:var(--fn);font-size:12px;letter-spacing:.06em;cursor:pointer;}
+.cb-btn.danger{border-color:rgba(244,114,102,.5);color:#f47266;background:rgba(244,114,102,.08);}
+.cb-btn:hover{background:#1e1e2a;}
+
 /* DEBUG */
 .dbgp{background:#000;color:#0f0;font-family:monospace;font-size:10px;padding:8px 12px;max-height:130px;overflow-y:auto;border-top:1px solid #0f04;display:none;flex-shrink:0;}
 .dbgp.on{display:block;}
@@ -155,20 +192,19 @@ body{background:var(--bg);color:var(--tx);font-family:var(--fn);min-height:100vh
 .de{color:#f87171;}.dok{color:#4ade80;}.dw{color:#fbbf24;}
 
 /* LANDSCAPE */
-@media (orientation:landscape) and (max-height:500px) {
+@media (orientation:landscape) and (max-height:500px){
   .lbox{min-height:56px;padding:8px 18px;}
-  .ltxt{font-size:16px;}
+  .ltxt{font-size:calc(var(--live-fs) * .8);}
   .tapbtn{padding:10px 8px;}
   .tapflag{font-size:22px;}
-  .sec,.tbar,.tappanel{padding-top:7px;padding-bottom:7px;}
+  .sec,.tbar,.tappanel,.swap-btn{padding-top:7px;padding-bottom:7px;}
   .hdr{padding-top:7px;padding-bottom:7px;}
 }
 
 /* MOBILE */
-@media (max-width:480px) {
-  .hdr,.sbar,.sec,.stbar,.ctrl,.lbox,.tbar,.tappanel,.dbgp{padding-left:14px;padding-right:14px;}
+@media (max-width:480px){
+  .hdr,.sbar,.sec,.stbar,.ctrl,.lbox,.tbar,.tappanel,.dbgp,.swap-btn{padding-left:14px;padding-right:14px;}
   .log{padding:12px 14px;}
-  .ltxt{font-size:18px;}
 }
 </style>
 </head>
@@ -178,11 +214,22 @@ body{background:var(--bg);color:var(--tx);font-family:var(--fn);min-height:100vh
 <div class="ls" id="lock-screen">
   <div class="ls-icon">🔒</div>
   <div class="ls-title">Live Interpreter &middot; Private</div>
-  <input type="password" class="ls-inp" id="lock-input"
-    placeholder="Password" autocomplete="off"
+  <input type="password" class="ls-inp" id="lock-input" placeholder="Password" autocomplete="off"
     onkeydown="if(event.key==='Enter')checkPass()">
   <button class="ls-btn" onclick="checkPass()">MASUK</button>
   <div class="ls-err" id="lock-err"></div>
+</div>
+
+<!-- CONFIRM DIALOG -->
+<div class="confirm-overlay" id="confirm-overlay">
+  <div class="confirm-box">
+    <div class="cb-title" id="confirm-title">Konfirmasi</div>
+    <div class="cb-msg" id="confirm-msg">Yakin?</div>
+    <div class="cb-actions">
+      <button class="cb-btn" onclick="confirmCancel()">Batal</button>
+      <button class="cb-btn danger" id="confirm-ok" onclick="confirmOk()">Ya, lanjut</button>
+    </div>
+  </div>
 </div>
 
 <!-- MAIN APP -->
@@ -190,7 +237,10 @@ body{background:var(--bg);color:var(--tx);font-family:var(--fn);min-height:100vh
 
   <div class="hdr">
     <div class="logo"><span>LIVE</span> INTERPRETER &middot; ID &middot; JP &middot; CN</div>
-    <div class="brand">Andono Imagine &mdash; 2026</div>
+    <div class="brand">
+      <span class="net-dot" id="net-dot"></span>
+      <span>Andono Imagine &mdash; 2026</span>
+    </div>
   </div>
 
   <div class="sbar">
@@ -199,7 +249,9 @@ body{background:var(--bg);color:var(--tx);font-family:var(--fn);min-height:100vh
     <span>SESI:</span><span class="snum" id="stat-session">00:00</span>
     <span class="ncb" id="nc-badge"><span class="ncd"></span><span id="nc-txt">NC</span></span>
     <div class="sbtns">
-      <button class="sbtn" id="wl-btn" title="Wake Lock — cegah layar mati" onclick="toggleWakeLock()">&#x1F506;</button>
+      <button class="sbtn" id="xl-btn" title="Mode XL (font besar)" onclick="toggleXL()">XL</button>
+      <button class="sbtn" id="fs-btn" title="Fullscreen" onclick="toggleFullscreen()">&#x2922;</button>
+      <button class="sbtn" id="wl-btn" title="Wake Lock" onclick="toggleWakeLock()">&#x1F506;</button>
       <button class="sbtn" onclick="exportTranscript()" title="Export transcript">&#x1F4BE;</button>
       <button class="sbtn" onclick="resetStats()" title="Reset statistik">&#x21BA;</button>
       <button class="sbtn" id="dbg-btn" onclick="toggleDebug()">&#x1F41B;</button>
@@ -213,10 +265,11 @@ body{background:var(--bg);color:var(--tx);font-family:var(--fn);min-height:100vh
       <button class="chip jp" id="lang-jp" onclick="setLang('jp')">&#x1F1EE;&#x1F1E9;&#x21D4;&#x1F1EF;&#x1F1F5; JEPANG</button>
       <button class="chip" id="lang-cn" onclick="setLang('cn')">&#x1F1EE;&#x1F1E9;&#x21D4;&#x1F1E8;&#x1F1F3; MANDARIN</button>
       <button class="chip" id="lang-both" onclick="setLang('both')">&#x1F1EF;&#x1F1F5;&#x1F1E8;&#x1F1F3; KEDUANYA</button>
+      <button class="chip" id="lang-jpcn" onclick="setLang('jpcn')">&#x1F1EF;&#x1F1F5;&#x21D4;&#x1F1E8;&#x1F1F3; JP&middot;CN</button>
     </div>
   </div>
 
-  <!-- Input mode + TTS speed -->
+  <!-- Mode + TTS -->
   <div class="sec">
     <div class="row">
       <span class="rl">MODE</span>
@@ -232,28 +285,31 @@ body{background:var(--bg);color:var(--tx);font-family:var(--fn);min-height:100vh
     </div>
   </div>
 
-  <!-- Timer setting (Mode A) -->
+  <!-- Timer setting -->
   <div class="sec" id="timer-setting">
     <div class="row">
       <span class="rl">DURASI/SISI</span>
-      <input type="range" class="tslider" id="timer-slider"
-        min="3" max="30" value="5" step="1"
-        oninput="updateTimerDuration(this.value)">
+      <input type="range" class="tslider" id="timer-slider" min="3" max="30" value="5" step="1" oninput="updateTimerDuration(this.value)">
       <span class="tval" id="timer-val">5 dtk</span>
+      <label style="font-size:11px;color:var(--mu);display:flex;align-items:center;gap:4px;">
+        <input type="checkbox" id="smart-cb" checked onchange="updateSmart(this.checked)" style="accent-color:var(--bo);">
+        SMART
+      </label>
     </div>
   </div>
 
-  <!-- Timer bar (Mode A running) -->
+  <!-- Timer bar -->
   <div class="tbar" id="timer-bar" style="display:none">
     <div class="row">
       <span class="rl">AKTIF</span>
       <div class="ttrack"><div class="tfill" id="timer-fill"></div></div>
       <span class="tlang" id="timer-lang">&#x1F1EE;&#x1F1E9; ID</span>
       <span class="tsecs" id="timer-secs">5s</span>
+      <span class="tsmart" id="timer-smart">+</span>
     </div>
   </div>
 
-  <!-- Tap panel (Mode B running) -->
+  <!-- Tap panel -->
   <div class="tappanel" id="tap-panel" style="display:none">
     <button class="tapbtn" id="tap-id" onclick="tap('id')">
       <span class="tapflag">&#x1F1EE;&#x1F1E9;</span>
@@ -265,6 +321,11 @@ body{background:var(--bg);color:var(--tx);font-family:var(--fn);min-height:100vh
       <span class="taplbl" id="tap-f-lbl">JEPANG</span>
       <span class="tapst" id="tap-f-st">Tap untuk giliran</span>
     </button>
+  </div>
+
+  <!-- Swap button -->
+  <div class="swap-btn" id="swap-row">
+    <button onclick="swapTapSide()" title="Ganti giliran"><span>&#x1F504;</span><span>SWAP GILIRAN</span></button>
   </div>
 
   <!-- Live transcript -->
@@ -286,12 +347,12 @@ body{background:var(--bg);color:var(--tx);font-family:var(--fn);min-height:100vh
   </div>
 
   <div class="ctrl">
-    <button class="bmain" id="btn-main" onclick="toggleRun()">
+    <button class="bmain" id="btn-main" onclick="onMainClick()">
       <span id="btn-icon">&#x25B6;</span>
       <span id="btn-lbl">START INTERPRETER</span>
     </button>
     <button class="bsm" id="btn-mute" onclick="toggleMute()" title="Mute speaker">&#x1F50A;</button>
-    <button class="bsm" onclick="clearLog()" title="Hapus log">&#x1F5D1;</button>
+    <button class="bsm" onclick="onClearClick()" title="Hapus log">&#x1F5D1;</button>
   </div>
 
   <div class="log" id="log">
@@ -318,22 +379,19 @@ var IS_MOBILE = IS_ANDROID || IS_IOS;
 // -- PASSWORD ----------------------------------------------
 function simpleHash(s) {
   var h = 0;
-  for (var i = 0; i < s.length; i++) {
-    h = Math.imul(31, h) + s.charCodeAt(i) | 0;
-  }
+  for (var i = 0; i < s.length; i++) h = Math.imul(31, h) + s.charCodeAt(i) | 0;
   return h.toString(36);
 }
-var CORRECT_HASH = simpleHash('andono2026');
+var PASS_HASH = simpleHash('andono2026');
 
 function checkPass() {
-  var val = ge('lock-input').value;
-  if (simpleHash(val) === CORRECT_HASH) {
+  var v = ge('lock-input').value;
+  if (simpleHash(v) === PASS_HASH) {
     var ls = ge('lock-screen');
     ls.classList.add('out');
     setTimeout(function() {
       ls.style.display = 'none';
-      var app = ge('app');
-      app.style.display = 'flex';
+      ge('app').style.display = 'flex';
       sessionStorage.setItem('auth', '1');
       init();
     }, 400);
@@ -342,20 +400,19 @@ function checkPass() {
     err.textContent = 'Password salah';
     ge('lock-input').value = '';
     ge('lock-input').focus();
-    setTimeout(function() { err.textContent = ''; }, 2000);
+    setTimeout(function(){ err.textContent = ''; }, 2000);
   }
 }
 
-// Auto-unlock
 if (sessionStorage.getItem('auth') === '1') {
-  ge_ready(function() {
+  ready(function() {
     ge('lock-screen').style.display = 'none';
     ge('app').style.display = 'flex';
     init();
   });
 }
 
-function ge_ready(fn) {
+function ready(fn) {
   if (document.readyState !== 'loading') fn();
   else document.addEventListener('DOMContentLoaded', fn);
 }
@@ -363,66 +420,55 @@ function ge_ready(fn) {
 // -- STATE -------------------------------------------------
 var S = {
   running: false,
+  starting: false,
   speaking: false,
   lang: 'jp',
   mode: 'a',
   timerMs: 5000,
+  smartTimer: true,
   ttsRate: 0.9,
   tapSide: null,
   cycleSide: 'id',
   muted: false,
+  xl: false,
   sentences: 0,
   sessionStart: null,
   wakeLock: null
 };
 
 var transcript = [];
-
-// Recognition
 var recInst = null;
 var recBusy = false;
-
-// Buffers
 var pending = '';
 var pendingTmr = null;
 var lastFinal = '';
 var lastFinalTime = 0;
 var silenceTmr = null;
 var lastPartial = '';
-
-// Audio
+var lastPartialTime = 0;
+var lastVoiceTime = 0;
 var audioStream = null;
 var audioCtx = null;
 var vuRAF = null;
 var avuInt = null;
-var silentCtx = null;
-
-// VAD
 var vadOn = false;
 var vadSilStart = 0;
 var VAD_THR = 15;
-var VAD_SIL = 1200;
-
-// Timers
+var VAD_SIL = 2500;
 var timerInt = null;
 var timerRem = 5000;
+var timerExtended = false;
 var sessInt = null;
-
-// Debug
 var debugOn = false;
+var pendingConfirm = null;
 
-// -- HELPERS -----------------------------------------------
+// -- DOM HELPERS -------------------------------------------
 function ge(id) { return document.getElementById(id); }
 
 function escHtml(s) {
   return String(s).replace(/[&<>"']/g, function(c) {
     return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];
   });
-}
-
-function ge_safe(id) {
-  var el = ge(id);
-  return el || { textContent:'', className:'', style:{}, classList:{ add:function(){}, remove:function(){}, toggle:function(){}, contains:function(){return false;} } };
 }
 
 // -- DEBUG -------------------------------------------------
@@ -446,7 +492,7 @@ function toggleDebug() {
   if (debugOn) {
     p.classList.add('on');
     b.classList.add('dbg-on');
-    dbg('DEBUG ON / Android:' + IS_ANDROID + ' / SR:' + !!SR, 'ok');
+    dbg('DEBUG ON | Android:' + IS_ANDROID + ' | SR:' + !!SR, 'ok');
   } else {
     p.classList.remove('on');
     b.classList.remove('dbg-on');
@@ -468,6 +514,24 @@ function toast(msg, type, ms) {
   }, ms || 2500);
 }
 
+// -- CONFIRM DIALOG ----------------------------------------
+function askConfirm(title, msg, onOk) {
+  ge('confirm-title').textContent = title;
+  ge('confirm-msg').textContent = msg;
+  pendingConfirm = onOk;
+  ge('confirm-overlay').classList.add('on');
+}
+
+function confirmOk() {
+  ge('confirm-overlay').classList.remove('on');
+  if (pendingConfirm) { pendingConfirm(); pendingConfirm = null; }
+}
+
+function confirmCancel() {
+  ge('confirm-overlay').classList.remove('on');
+  pendingConfirm = null;
+}
+
 // -- WAKE LOCK ---------------------------------------------
 async function requestWakeLock() {
   if (!('wakeLock' in navigator)) { dbg('WakeLock not supported', 'warn'); return; }
@@ -479,11 +543,6 @@ async function requestWakeLock() {
       S.wakeLock = null;
       ge('wl-btn').classList.remove('on');
     });
-    document.addEventListener('visibilitychange', async function() {
-      if (document.visibilityState === 'visible' && S.running && !S.wakeLock) {
-        await requestWakeLock();
-      }
-    });
   } catch(e) { dbg('WakeLock err: ' + e.message, 'err'); }
 }
 
@@ -493,32 +552,73 @@ function releaseWakeLock() {
 }
 
 function toggleWakeLock() {
-  if (S.wakeLock) {
-    releaseWakeLock();
-    toast('Wake Lock dimatikan', 'warn', 1500);
+  if (S.wakeLock) { releaseWakeLock(); toast('Wake Lock dimatikan', 'warn', 1500); }
+  else requestWakeLock().then(function() {
+    if (S.wakeLock) toast('Layar tidak akan mati', 'ok', 2000);
+    else toast('Wake Lock tidak didukung browser ini', 'warn');
+  });
+}
+
+// Re-acquire on visibility change
+document.addEventListener('visibilitychange', function() {
+  if (document.visibilityState === 'visible' && S.running && !S.wakeLock) requestWakeLock();
+});
+
+// -- FULLSCREEN --------------------------------------------
+function toggleFullscreen() {
+  if (!document.fullscreenElement && !document.webkitFullscreenElement) {
+    var el = document.documentElement;
+    var req = el.requestFullscreen || el.webkitRequestFullscreen;
+    if (req) req.call(el).then(function() {
+      ge('fs-btn').classList.add('on');
+    }).catch(function(){ toast('Fullscreen tidak didukung', 'warn'); });
   } else {
-    requestWakeLock().then(function() {
-      if (S.wakeLock) toast('Layar tidak akan mati', 'ok', 2000);
-      else toast('Wake Lock tidak didukung di browser ini', 'warn');
-    });
+    var exit = document.exitFullscreen || document.webkitExitFullscreen;
+    if (exit) exit.call(document);
+    ge('fs-btn').classList.remove('on');
   }
+}
+
+// -- XL MODE -----------------------------------------------
+function toggleXL() {
+  S.xl = !S.xl;
+  document.body.classList.toggle('xl', S.xl);
+  ge('xl-btn').classList.toggle('on', S.xl);
+  localStorage.setItem('ixl', S.xl ? '1' : '0');
+  toast(S.xl ? 'Mode XL aktif - font besar' : 'Mode normal', '', 1500);
 }
 
 // -- INIT --------------------------------------------------
 function init() {
   sessionStorage.setItem('auth', '1');
-  if (!SR) toast('Gunakan Chrome/Edge untuk fitur mic', 'warn', 5000);
+  if (!SR) toast('Gunakan Chrome/Edge', 'warn', 5000);
 
+  // Restore settings
   var t = parseInt(localStorage.getItem('itimer') || '5');
   S.timerMs = t * 1000;
   timerRem = S.timerMs;
   ge('timer-slider').value = t;
   ge('timer-val').textContent = t + ' dtk';
 
+  S.smartTimer = localStorage.getItem('ismart') !== '0';
+  ge('smart-cb').checked = S.smartTimer;
+
   var spd = parseFloat(localStorage.getItem('ispeed') || '0.9');
   S.ttsRate = spd;
   ge('tts-speed').value = String(spd);
 
+  S.xl = localStorage.getItem('ixl') === '1';
+  if (S.xl) { document.body.classList.add('xl'); ge('xl-btn').classList.add('on'); }
+
+  S.lang = localStorage.getItem('ilang') || 'jp';
+  setLang(S.lang);
+  S.mode = localStorage.getItem('imode') || 'a';
+  setInputMode(S.mode);
+
+  S.muted = localStorage.getItem('imute') === '1';
+  if (S.muted) { ge('btn-mute').textContent = '🔇'; ge('btn-mute').classList.add('on'); }
+
+  // Daily counter
   var today = new Date().toDateString();
   if (localStorage.getItem('idate') !== today) {
     localStorage.setItem('idate', today);
@@ -526,10 +626,28 @@ function init() {
   }
   S.sentences = parseInt(localStorage.getItem('icount') || '0');
   updateStats();
+
+  // Online status
+  updateOnlineStatus();
   loadHistory();
   requestWakeLock();
-  dbg('init done / mobile:' + IS_MOBILE, 'ok');
+  dbg('init done | mobile:' + IS_MOBILE, 'ok');
 }
+
+// -- ONLINE STATUS -----------------------------------------
+function updateOnlineStatus() {
+  var d = ge('net-dot');
+  if (d) d.classList.toggle('off', !navigator.onLine);
+}
+
+window.addEventListener('offline', function() {
+  updateOnlineStatus();
+  toast('Koneksi internet terputus', 'err', 5000);
+});
+window.addEventListener('online', function() {
+  updateOnlineStatus();
+  toast('Koneksi internet kembali', 'ok', 2000);
+});
 
 // -- NC BADGE ----------------------------------------------
 function updateNCBadge(on, settings) {
@@ -545,11 +663,9 @@ function updateNCBadge(on, settings) {
       if (settings.autoGainControl) f.push('AGC');
     }
     t.textContent = '🛡 NC' + (f.length ? ' ' + f.join('+') : ' ON');
-    b.title = 'Noise Cancelling aktif: ' + (f.join(', ') || 'ON');
   } else {
     b.className = 'ncb';
     t.textContent = '🛡 NC OFF';
-    b.title = 'Noise Cancelling tidak aktif';
   }
 }
 
@@ -574,8 +690,13 @@ function setLiveLabel(side) {
   var el = ge('live-lbl');
   if (!el) return;
   if (!side) { el.textContent = 'YANG TERDENGAR'; return; }
-  if (side === 'id') el.textContent = 'YANG TERDENGAR - INDONESIA';
-  else el.textContent = 'YANG TERDENGAR - ' + (S.lang === 'cn' ? 'MANDARIN' : 'JEPANG');
+  if (S.lang === 'jpcn') {
+    // Mode JP<->CN
+    el.textContent = side === 'id' ? 'YANG TERDENGAR - JEPANG' : 'YANG TERDENGAR - MANDARIN';
+  } else {
+    if (side === 'id') el.textContent = 'YANG TERDENGAR - INDONESIA';
+    else el.textContent = 'YANG TERDENGAR - ' + (S.lang === 'cn' ? 'MANDARIN' : 'JEPANG');
+  }
 }
 
 function updateStats() {
@@ -583,22 +704,36 @@ function updateStats() {
   if (el) el.textContent = S.sentences;
 }
 
-// -- SETTINGS ---------------------------------------------
+// -- SETTINGS ----------------------------------------------
 function setLang(l) {
   S.lang = l;
-  ['jp','cn','both'].forEach(function(x) {
+  localStorage.setItem('ilang', l);
+  ['jp','cn','both','jpcn'].forEach(function(x) {
     var el = ge('lang-' + x);
     if (el) el.className = 'chip' + (x === l ? ' ' + l : '');
   });
-  var ff = ge('tap-f-flag');
-  var fl = ge('tap-f-lbl');
-  if (ff) ff.textContent = l === 'cn' ? '🇨🇳' : '🇯🇵';
-  if (fl) fl.textContent = l === 'cn' ? 'MANDARIN' : 'JEPANG';
+  var ff = ge('tap-f-flag'); var fl = ge('tap-f-lbl');
+  var ti = ge('tap-id');
+  var til = ti && ti.querySelector ? ti.querySelector('.taplbl') : null;
+  var tif = ti && ti.querySelector ? ti.querySelector('.tapflag') : null;
+
+  if (l === 'jpcn') {
+    if (tif) tif.textContent = '🇯🇵';
+    if (til) til.textContent = 'JEPANG';
+    if (ff) ff.textContent = '🇨🇳';
+    if (fl) fl.textContent = 'MANDARIN';
+  } else {
+    if (tif) tif.textContent = '🇮🇩';
+    if (til) til.textContent = 'INDONESIA';
+    if (ff) ff.textContent = l === 'cn' ? '🇨🇳' : '🇯🇵';
+    if (fl) fl.textContent = l === 'cn' ? 'MANDARIN' : 'JEPANG';
+  }
   if (S.running) restartFromConfig();
 }
 
 function setInputMode(m) {
   S.mode = m;
+  localStorage.setItem('imode', m);
   var a = ge('im-a'); var b = ge('im-b');
   if (a) a.className = 'chip' + (m === 'a' ? ' ma' : '');
   if (b) b.className = 'chip' + (m === 'b' ? ' mb' : '');
@@ -606,9 +741,10 @@ function setInputMode(m) {
   if (ts) ts.style.display = m === 'a' ? 'block' : 'none';
   if (S.running) restartFromConfig();
   else {
-    var tb = ge('timer-bar'); var tp = ge('tap-panel');
+    var tb = ge('timer-bar'); var tp = ge('tap-panel'); var sr = ge('swap-row');
     if (tb) tb.style.display = 'none';
     if (tp) tp.style.display = 'none';
+    if (sr) sr.classList.remove('on');
   }
 }
 
@@ -618,6 +754,12 @@ function updateTimerDuration(val) {
   localStorage.setItem('itimer', val);
   var el = ge('timer-val');
   if (el) el.textContent = val + ' dtk';
+}
+
+function updateSmart(checked) {
+  S.smartTimer = checked;
+  localStorage.setItem('ismart', checked ? '1' : '0');
+  toast(checked ? 'Smart Mode A aktif' : 'Smart Mode A dimatikan', '', 1500);
 }
 
 function updateTTSSpeed(val) {
@@ -630,9 +772,10 @@ function updateTTSSpeed(val) {
 
 function toggleMute() {
   S.muted = !S.muted;
+  localStorage.setItem('imute', S.muted ? '1' : '0');
   var b = ge('btn-mute');
   if (b) { b.textContent = S.muted ? '🔇' : '🔊'; b.classList.toggle('on', S.muted); }
-  toast(S.muted ? 'Speaker mati 🔇' : 'Speaker nyala 🔊', '', 1500);
+  toast(S.muted ? 'Speaker mati' : 'Speaker nyala', '', 1500);
 }
 
 // -- LANGUAGE HELPERS --------------------------------------
@@ -641,6 +784,8 @@ function foreignLang() {
 }
 
 function langCode(side) {
+  // Mode jpcn: side 'id' artinya JP (sisi kiri), side 'foreign' artinya CN (sisi kanan)
+  if (S.lang === 'jpcn') return side === 'id' ? 'ja-JP' : 'zh-CN';
   return side === 'id' ? 'id-ID' : foreignLang();
 }
 
@@ -654,26 +799,43 @@ function detectSrcLang(text) {
 }
 
 // -- RUN / STOP --------------------------------------------
-function toggleRun() {
-  if (S.running) stopRun(); else startRun();
+function onMainClick() {
+  if (S.starting) return;
+  if (S.running) {
+    askConfirm('Hentikan Interpreter?', 'Sesi saat ini akan dihentikan. Riwayat percakapan tetap tersimpan.', stopRun);
+  } else {
+    startRun();
+  }
 }
 
 function startRun() {
   if (!SR) { toast('Browser tidak mendukung Web Speech API', 'err'); return; }
+  if (!navigator.onLine) { toast('Tidak ada koneksi internet', 'err', 4000); return; }
+  S.starting = true;
   S.running = true;
   var bm = ge('btn-main');
-  if (bm) bm.classList.add('run');
-  var bi = ge('btn-icon'); var bl = ge('btn-lbl');
-  if (bi) bi.textContent = '■';
-  if (bl) bl.textContent = 'STOP INTERPRETER';
+  if (bm) bm.classList.add('init');
+  ge('btn-icon').textContent = '⋯';
+  ge('btn-lbl').textContent = 'MEMULAI...';
+  setStatus('init', 'Mengaktifkan mikrofon...');
   startSessionTimer();
   requestWakeLock();
-  setLiveText('Menunggu suara...', 'emp');
-  restartFromConfig();
+  setLiveText('Sedang menyiapkan...', 'emp');
+  setTimeout(function() {
+    if (!S.running) return;
+    S.starting = false;
+    var bm = ge('btn-main');
+    bm.classList.remove('init');
+    bm.classList.add('run');
+    ge('btn-icon').textContent = '■';
+    ge('btn-lbl').textContent = 'STOP INTERPRETER';
+    restartFromConfig();
+  }, 400);
 }
 
 function stopRun() {
   S.running = false;
+  S.starting = false;
   S.tapSide = null;
   S.speaking = false;
   stopRecognition();
@@ -682,18 +844,22 @@ function stopRun() {
   cleanupAudio();
   clearTimeout(pendingTmr);
   clearTimeout(silenceTmr);
+  clearTimeout(sentenceBufferTmr);
   pending = '';
   lastPartial = '';
+  sentenceBuffer = '';
+  sentenceBufferTime = 0;
+  speechQ.length = 0;
   var bm = ge('btn-main');
-  if (bm) bm.classList.remove('run');
-  var bi = ge('btn-icon'); var bl = ge('btn-lbl');
-  if (bi) bi.textContent = '▶';
-  if (bl) bl.textContent = 'START INTERPRETER';
+  if (bm) { bm.classList.remove('run'); bm.classList.remove('init'); }
+  ge('btn-icon').textContent = '▶';
+  ge('btn-lbl').textContent = 'START INTERPRETER';
   setStatus('', 'Interpreter dihentikan');
   setLiveText('', 'emp');
-  var tb = ge('timer-bar'); var tp = ge('tap-panel');
+  var tb = ge('timer-bar'); var tp = ge('tap-panel'); var sr = ge('swap-row');
   if (tb) tb.style.display = 'none';
   if (tp) tp.style.display = 'none';
+  if (sr) sr.classList.remove('on');
   resetVUBars();
   updateNCBadge(false);
   toast('Interpreter dihentikan', '', 1500);
@@ -704,19 +870,24 @@ function restartFromConfig() {
   clearTimerA();
   clearTimeout(pendingTmr);
   clearTimeout(silenceTmr);
+  clearTimeout(sentenceBufferTmr);
   pending = '';
   lastPartial = '';
+  sentenceBuffer = '';
+  sentenceBufferTime = 0;
   setLiveText('', 'emp');
-  var tb = ge('timer-bar'); var tp = ge('tap-panel');
+  var tb = ge('timer-bar'); var tp = ge('tap-panel'); var sr = ge('swap-row');
   if (S.mode === 'a') {
     S.cycleSide = 'id';
     if (tb) tb.style.display = 'block';
     if (tp) tp.style.display = 'none';
+    if (sr) sr.classList.remove('on');
     setTimeout(function() { if (S.running) beginCycleA('id'); }, 250);
   } else {
     S.tapSide = 'id';
     if (tb) tb.style.display = 'none';
     if (tp) tp.style.display = 'flex';
+    if (sr) sr.classList.add('on');
     updateTapUI();
     setLiveLabel('id');
     setTimeout(function() { if (S.running) startRecognition(langCode('id')); }, 250);
@@ -727,6 +898,8 @@ function restartFromConfig() {
 function beginCycleA(side) {
   if (!S.running) return;
   S.cycleSide = side;
+  timerExtended = false;
+  ge('timer-smart').classList.remove('on');
   setLiveLabel(side);
   setLiveText('Mendengarkan...', 'emp');
   startRecognition(langCode(side));
@@ -741,6 +914,14 @@ function startTimerA() {
     timerRem -= 100;
     updateTimerUI();
     if (timerRem <= 0) {
+      // Smart Mode: kalau ada suara baru-baru ini (1 detik), perpanjang 3 detik
+      if (S.smartTimer && !timerExtended && lastVoiceTime && (Date.now() - lastVoiceTime < 1000)) {
+        timerExtended = true;
+        timerRem = 3000;
+        ge('timer-smart').classList.add('on');
+        dbg('smart timer extended +3s', 'ok');
+        return;
+      }
       clearTimerA();
       if (!S.running || S.speaking) return;
       var next = S.cycleSide === 'id' ? 'foreign' : 'id';
@@ -755,16 +936,24 @@ function startTimerA() {
 function clearTimerA() {
   clearInterval(timerInt);
   timerInt = null;
+  ge('timer-smart').classList.remove('on');
 }
 
 function updateTimerUI() {
-  var pct = (timerRem / S.timerMs) * 100;
+  var maxMs = timerExtended ? 3000 : S.timerMs;
+  var pct = (timerRem / maxMs) * 100;
   var f = ge('timer-fill');
-  if (f) { f.style.width = pct + '%'; f.style.background = pct > 50 ? '#4ade80' : pct > 20 ? '#fbbf24' : '#f87171'; }
+  if (f) { f.style.width = Math.max(0, Math.min(100, pct)) + '%'; f.style.background = pct > 50 ? '#4ade80' : pct > 20 ? '#fbbf24' : '#f87171'; }
   var l = ge('timer-lang');
-  if (l) l.textContent = S.cycleSide === 'id' ? '🇮🇩 ID' : (S.lang === 'cn' ? '🇨🇳 CN' : '🇯🇵 JP');
+  if (l) {
+    if (S.lang === 'jpcn') {
+      l.textContent = S.cycleSide === 'id' ? '🇯🇵 JP' : '🇨🇳 CN';
+    } else {
+      l.textContent = S.cycleSide === 'id' ? '🇮🇩 ID' : (S.lang === 'cn' ? '🇨🇳 CN' : '🇯🇵 JP');
+    }
+  }
   var sc = ge('timer-secs');
-  if (sc) sc.textContent = Math.ceil(timerRem / 1000) + 's';
+  if (sc) sc.textContent = Math.max(0, Math.ceil(timerRem / 1000)) + 's';
 }
 
 // -- MODE B ------------------------------------------------
@@ -778,7 +967,12 @@ function tap(side) {
   setLiveText('Mendengarkan...', 'emp');
   setTimeout(function() {
     if (S.running && S.tapSide === side) startRecognition(langCode(side));
-  }, 150);
+  }, 200);
+}
+
+function swapTapSide() {
+  if (!S.running) return;
+  tap(S.tapSide === 'id' ? 'foreign' : 'id');
 }
 
 function updateTapUI() {
@@ -790,10 +984,13 @@ function updateTapUI() {
   if (tfs) tfs.textContent = 'Tap untuk giliran';
   if (!S.tapSide) return;
   if (S.tapSide === 'id') {
-    if (ti) ti.className = 'tapbtn lid';
+    // Sisi kiri: di mode jpcn = JP, di mode lain = ID
+    var clsId = S.lang === 'jpcn' ? 'ljp' : 'lid';
+    if (ti) ti.className = 'tapbtn ' + clsId;
     if (tis) tis.textContent = '🎙 Mendengarkan';
   } else {
-    var cls = S.lang === 'cn' ? 'lcn' : 'ljp';
+    // Sisi kanan: di mode jpcn = CN, di mode lain = JP atau CN
+    var cls = S.lang === 'jpcn' ? 'lcn' : (S.lang === 'cn' ? 'lcn' : 'ljp');
     if (tf) tf.className = 'tapbtn ' + cls;
     if (tfs) tfs.textContent = '🎙 Mendengarkan';
   }
@@ -805,10 +1002,10 @@ async function startRecognition(lang) {
   recBusy = true;
   stopRecognitionOnly();
 
-  // Setup audio (desktop only - mobile conflicts with SR)
+  // Audio setup (desktop only)
   if (!IS_MOBILE) {
     try {
-      if (audioStream) { audioStream.getTracks().forEach(function(t) { t.stop(); }); audioStream = null; }
+      if (audioStream) { audioStream.getTracks().forEach(function(t){t.stop();}); audioStream = null; }
       audioStream = await navigator.mediaDevices.getUserMedia({
         audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true, channelCount: 1 }
       });
@@ -827,8 +1024,9 @@ async function startRecognition(lang) {
   }
 
   var r = new SR();
-  r.continuous = !IS_MOBILE;
-  r.interimResults = !IS_MOBILE;
+  // KUNCI: continuous=true di semua platform untuk minimasi restart (kurangi bip Android)
+  r.continuous = true;
+  r.interimResults = true;
   r.lang = lang;
   r.maxAlternatives = 1;
 
@@ -843,34 +1041,63 @@ async function startRecognition(lang) {
 
   r.onsoundstart = function() {
     dbg('soundstart', 'ok');
-    setLiveText('🎙 Suara terdeteksi...', 'par');
+    lastVoiceTime = Date.now();
+    if (IS_ANDROID) setLiveText('🎙 Suara terdeteksi...', 'par');
   };
 
   r.onspeechstart = function() {
     dbg('speechstart', 'ok');
-    setLiveText('🎙 Bicara terdeteksi...', 'par');
+    lastVoiceTime = Date.now();
+    if (IS_ANDROID) setLiveText('🎙 Bicara terdeteksi...', 'par');
   };
 
   r.onspeechend = function() {
     dbg('speechend', 'warn');
-    if (IS_MOBILE) { try { r.stop(); } catch(x) {} }
+    // JANGAN stop di Android - biarkan continuous (cegah bip)
+    // Silence timer akan handle final
   };
 
   r.onresult = function(e) {
     if (S.speaking) return;
+    lastVoiceTime = Date.now();
     for (var i = e.resultIndex; i < e.results.length; i++) {
       var txt = e.results[i][0].transcript.trim();
       var isFinal = e.results[i].isFinal;
 
       if (!isFinal) {
-        // Partial - desktop only
         if (!txt) continue;
         setLiveText(txt, 'par');
         dbg('partial: ' + txt.substring(0, 40));
+
+        // Hanya update tracker kalau partial benar-benar berbeda
         if (txt !== lastPartial) {
+          // Catat: partial masih BERKEMBANG (kamu masih bicara)
+          // Reset silence timer dengan durasi lebih lama
           lastPartial = txt;
+          lastPartialTime = Date.now();
+
+          // Smart Mode A extension
+          if (S.mode === 'a' && S.smartTimer && timerInt && timerRem < 1500 && !timerExtended) {
+            timerExtended = true;
+            timerRem = 3000;
+            ge('timer-smart').classList.add('on');
+            dbg('smart extend on partial', 'ok');
+          }
+
+          // Clear timer lama, set yang baru
           clearTimeout(silenceTmr);
+          // Durasi lebih lama untuk hindari potong di tengah kalimat
+          // Android: 2.5 detik (lebih lama karena partial lambat)
+          // Desktop: 2.2 detik
+          var silMs = IS_ANDROID ? 2500 : 2200;
           silenceTmr = setTimeout(function() {
+            // Double-check: partial harus benar-benar stabil
+            // (tidak ada update dalam silMs terakhir)
+            var sinceLastChange = Date.now() - lastPartialTime;
+            if (sinceLastChange < silMs - 200) {
+              dbg('partial still active, skip force-final', '');
+              return;
+            }
             if (lastPartial && lastPartial.length >= 2 && !S.speaking) {
               dbg('silence-force: ' + lastPartial, 'warn');
               var t = lastPartial; lastPartial = '';
@@ -879,20 +1106,23 @@ async function startRecognition(lang) {
               clearTimeout(pendingTmr);
               triggerFinal();
             }
-          }, 2000);
+          }, silMs);
         }
+        // Kalau partial SAMA dengan sebelumnya, jangan reset timer
+        // Timer terus jalan sampai silMs total
         continue;
       }
 
-      // Final
+      // Final result dari API
       if (txt.length < 2) continue;
       dbg('api-final: ' + txt.substring(0, 40), 'ok');
       setLiveText(txt, 'fin');
       clearTimeout(silenceTmr);
       lastPartial = '';
+      lastPartialTime = 0;
       if (txt.length > pending.length) pending = txt;
       clearTimeout(pendingTmr);
-      pendingTmr = setTimeout(function() { triggerFinal(); }, IS_MOBILE ? 50 : 600);
+      pendingTmr = setTimeout(function(){ triggerFinal(); }, 300);
     }
   };
 
@@ -900,13 +1130,15 @@ async function startRecognition(lang) {
     recBusy = false;
     dbg('rec err: ' + e.error, (e.error === 'no-speech' || e.error === 'aborted') ? '' : 'err');
     if (e.error === 'not-allowed') {
-      toast('Izin mikrofon ditolak — aktifkan di pengaturan', 'err', 5000);
-      stopRun(); return;
+      toast('Izin mikrofon ditolak - aktifkan di pengaturan', 'err', 5000);
+      stopRun();
+      return;
     }
     if (e.error === 'network') toast('Koneksi bermasalah', 'warn');
     if (e.error === 'no-speech' || e.error === 'aborted') {
       if (!S.running || S.speaking) return;
-      restartSame(lang); return;
+      restartSame(lang);
+      return;
     }
     setTimeout(function() { if (S.running && !S.speaking) startRecognition(lang); }, 800);
   };
@@ -915,9 +1147,9 @@ async function startRecognition(lang) {
     recBusy = false;
     dbg('onend partial="' + (lastPartial || 'none') + '"');
     if (!S.running || S.speaking) return;
-    // Mobile: process pending partial
-    if (IS_MOBILE && lastPartial && lastPartial.length >= 2) {
-      dbg('mobile force-final: ' + lastPartial, 'warn');
+    // Process pending partial jika ada
+    if (lastPartial && lastPartial.length >= 2) {
+      dbg('onend force-final: ' + lastPartial, 'warn');
       var t = lastPartial; lastPartial = '';
       clearTimeout(silenceTmr);
       setLiveText(t, 'fin');
@@ -934,13 +1166,11 @@ async function startRecognition(lang) {
 
 function restartSame(lang) {
   if (!S.running || S.speaking) return;
-  var delay = IS_MOBILE ? 600 : 200;
-  if (IS_ANDROID) keepAudioFocus();
   setTimeout(function() {
     if (!S.running || S.speaking) return;
     if (S.mode === 'a' && timerInt) startRecognition(lang);
     else if (S.mode === 'b' && S.tapSide && langCode(S.tapSide) === lang) startRecognition(lang);
-  }, delay);
+  }, 200);
 }
 
 function stopRecognitionOnly() {
@@ -961,17 +1191,117 @@ function stopRecognition() {
 }
 
 // -- TRIGGER FINAL -----------------------------------------
+// Sentence buffer: gabungkan potongan kalimat dalam window pendek
+var sentenceBuffer = '';
+var sentenceBufferTime = 0;
+var sentenceBufferTmr = null;
+var SENTENCE_BUFFER_MS = 2500;
+
+// Normalisasi untuk perbandingan: lowercase, hilangkan punctuation & extra spaces
+function normalizeForCompare(s) {
+  return String(s).toLowerCase().replace(/[.,!?;:'"()]/g, '').replace(/\s+/g, ' ').trim();
+}
+
 function triggerFinal() {
   var final = pending; pending = '';
   if (!final || final.length < 2) return;
   var now = Date.now();
+
+  // Block exact duplicate dalam 3 detik
   if (final === lastFinal && now - lastFinalTime < 3000) {
-    dbg('dup: ' + final); return;
+    dbg('dup exact: ' + final);
+    return;
   }
-  lastFinal = final;
-  lastFinalTime = now;
-  dbg('FINAL: ' + final, 'ok');
-  handleFinal(final);
+
+  // Cek apakah final baru adalah perluasan dari yang ada di buffer
+  if (sentenceBuffer && now - sentenceBufferTime < SENTENCE_BUFFER_MS + 1500) {
+    var nFinal = normalizeForCompare(final);
+    var nBuffer = normalizeForCompare(sentenceBuffer);
+
+    // Kasus 1: final identik dengan buffer (setelah normalisasi) - skip
+    if (nFinal === nBuffer) {
+      dbg('buffer-dup-normalized: ' + final);
+      sentenceBufferTime = now;
+    }
+    // Kasus 2: final mengandung buffer di awal - replace dengan versi lengkap
+    else if (nFinal.length > nBuffer.length && nFinal.indexOf(nBuffer) === 0) {
+      dbg('buffer-replace (extension): -> "' + final.substring(0,40) + '..."', 'warn');
+      sentenceBuffer = final;
+      sentenceBufferTime = now;
+    }
+    // Kasus 3: buffer mengandung final di awal - skip (final lebih pendek/lama)
+    else if (nBuffer.length > nFinal.length && nBuffer.indexOf(nFinal) === 0) {
+      dbg('buffer-skip-shorter: ' + final);
+      sentenceBufferTime = now;
+    }
+    // Kasus 4: ada overlap parsial (mis. buffer berakhir dengan kata yang sama dengan awal final)
+    else {
+      // Cek kalau final mengandung buffer di mana saja - sudah jelas extension
+      if (nFinal.indexOf(nBuffer) !== -1) {
+        dbg('buffer-contains: -> "' + final.substring(0,40) + '..."', 'warn');
+        sentenceBuffer = final;
+        sentenceBufferTime = now;
+      }
+      // Cek kalau buffer mengandung final - skip
+      else if (nBuffer.indexOf(nFinal) !== -1) {
+        dbg('buffer-contained, skip', '');
+        sentenceBufferTime = now;
+      }
+      // Benar-benar kalimat lanjutan baru - append
+      else {
+        // Cek overlap kata-kata di ujung buffer dan awal final
+        var overlap = findOverlap(nBuffer, nFinal);
+        if (overlap > 0) {
+          // Ada overlap - gabung dengan menghilangkan duplikat
+          var bufferWords = sentenceBuffer.split(/\s+/);
+          var finalWords = final.split(/\s+/);
+          sentenceBuffer = bufferWords.concat(finalWords.slice(overlap)).join(' ');
+          dbg('buffer-merge-overlap(' + overlap + '): "' + sentenceBuffer.substring(0,50) + '..."', 'warn');
+        } else {
+          // No overlap - simple append
+          sentenceBuffer = sentenceBuffer + ' ' + final;
+          dbg('buffer-append-clean: "' + final + '"', 'warn');
+        }
+        sentenceBufferTime = now;
+      }
+    }
+  } else {
+    sentenceBuffer = final;
+    sentenceBufferTime = now;
+    dbg('buffer-start: ' + final.substring(0, 40));
+  }
+
+  // Reset timer - tunggu kalau ada lanjutan
+  clearTimeout(sentenceBufferTmr);
+  sentenceBufferTmr = setTimeout(function() {
+    var combined = sentenceBuffer;
+    sentenceBuffer = '';
+    sentenceBufferTime = 0;
+    if (!combined || combined.length < 2) return;
+    var checkNow = Date.now();
+    if (combined === lastFinal && checkNow - lastFinalTime < 3000) {
+      dbg('post-buffer dup: ' + combined);
+      return;
+    }
+    lastFinal = combined;
+    lastFinalTime = checkNow;
+    dbg('FINAL (buffered): ' + combined.substring(0, 60), 'ok');
+    handleFinal(combined);
+  }, SENTENCE_BUFFER_MS);
+}
+
+// Cari berapa kata di akhir buffer yang sama dengan awal final
+function findOverlap(buffer, final) {
+  var bw = buffer.split(/\s+/);
+  var fw = final.split(/\s+/);
+  // Coba overlap dari yang terpanjang ke terpendek
+  var maxOverlap = Math.min(bw.length, fw.length, 10);
+  for (var n = maxOverlap; n > 0; n--) {
+    var bufEnd = bw.slice(-n).join(' ');
+    var finStart = fw.slice(0, n).join(' ');
+    if (bufEnd === finStart) return n;
+  }
+  return 0;
 }
 
 // -- TRANSLATION -------------------------------------------
@@ -980,19 +1310,69 @@ async function translateText(text, from, to) {
   var res = await fetch(url);
   if (!res.ok) throw new Error('HTTP ' + res.status);
   var data = await res.json();
-  if (!data || !data[0]) throw new Error('Empty response');
-  return data[0].filter(function(x) { return x && x[0]; }).map(function(x) { return x[0]; }).join('');
+  if (!data || !data[0]) throw new Error('Empty');
+  return data[0].filter(function(x){return x && x[0];}).map(function(x){return x[0];}).join('');
 }
 
 async function handleFinal(text) {
   if (!text || text.length < 2) return;
+
+  // Cek apakah text adalah extension dari pesan log terakhir (dalam 6 detik)
+  // Jika ya, replace pesan log lama dengan versi lengkap
+  var now = Date.now();
+  var lastMsg = transcript.length ? transcript[transcript.length - 1] : null;
+  if (lastMsg && lastMsg.timeStamp && now - lastMsg.timeStamp < 6000) {
+    var nLast = normalizeForCompare(lastMsg.original);
+    var nNew = normalizeForCompare(text);
+    // Jika kalimat baru mengandung kalimat lama di awal → replace
+    if (nNew.length > nLast.length && nNew.indexOf(nLast) === 0) {
+      dbg('log-replace: extension dari pesan terakhir', 'warn');
+      // Hapus pesan log terakhir
+      var log = ge('log');
+      if (log && log.firstChild && log.firstChild.classList && log.firstChild.classList.contains('msg')) {
+        log.removeChild(log.firstChild);
+      }
+      transcript.pop();
+      S.sentences = Math.max(0, S.sentences - 1);
+      updateStats();
+      saveHistory();
+      // Lanjut proses kalimat lengkap di bawah
+    } else if (nLast.indexOf(nNew) !== -1) {
+      // Kalimat baru sudah tercakup dalam kalimat lama - skip
+      dbg('log-skip: sudah tercakup di pesan terakhir');
+      return;
+    }
+  }
+
   setStatus('pro', 'Menerjemahkan...');
   dbg('translate: ' + text.substring(0, 50));
   var src = detectSrcLang(text);
-  dbg('src lang: ' + src);
+  dbg('src: ' + src);
   try {
     var result;
-    if (src === 'id') {
+
+    // Mode JP <-> CN
+    if (S.lang === 'jpcn') {
+      if (src === 'jp') {
+        var tl = await translateText(text, 'ja', 'zh-CN');
+        result = { dir: 'jp-cn', translated: tl };
+        addMessage(text, result, 'jp');
+        if (!S.muted) queueSpeech(tl, 'zh-CN');
+      } else if (src === 'cn') {
+        var tl = await translateText(text, 'zh-CN', 'ja');
+        result = { dir: 'cn-jp', translated: tl };
+        addMessage(text, result, 'cn');
+        if (!S.muted) queueSpeech(tl, 'ja-JP');
+      } else {
+        // ID terdeteksi di mode jpcn — fallback terjemahkan ke kedua bahasa
+        var res = await Promise.all([translateText(text, 'id', 'ja'), translateText(text, 'id', 'zh-CN')]);
+        result = { dir: 'id-both', jp: res[0], cn: res[1] };
+        addMessage(text, result, 'id');
+        if (!S.muted) queueSpeech(res[0], 'ja-JP');
+      }
+    }
+    // Mode normal (ID-JP, ID-CN, ID-Both)
+    else if (src === 'id') {
       if (S.lang === 'both') {
         var res = await Promise.all([translateText(text, 'id', 'ja'), translateText(text, 'id', 'zh-CN')]);
         result = { dir: 'id-both', jp: res[0], cn: res[1] };
@@ -1020,7 +1400,7 @@ async function handleFinal(text) {
     dbg('translate FAIL: ' + e.message, 'err');
     setStatus('lis', 'Gagal menerjemahkan');
     if (!navigator.onLine) toast('Tidak ada koneksi internet', 'err');
-    else toast('Gagal menerjemahkan, coba lagi', 'warn', 2000);
+    else toast('Gagal menerjemahkan', 'warn', 2000);
   }
 }
 
@@ -1061,21 +1441,47 @@ function processSpeech() {
   window.speechSynthesis.speak(u);
 }
 
+// Replay single message
+function replayMsg(text, lang) {
+  if (!text || !lang) return;
+  var u = new SpeechSynthesisUtterance(text);
+  u.lang = lang;
+  u.rate = S.ttsRate;
+  window.speechSynthesis.speak(u);
+  toast('Memutar ulang', '', 1500);
+}
+
 // -- MESSAGE LOG -------------------------------------------
-function buildMsgHtml(original, parsed, srcLang, timeStr, isHistory) {
+function buildMsgHtml(original, parsed, srcLang, timeStr, isHistory, msgId) {
   var badge = srcLang === 'id' ? '<span class="badge bid">KAMU &middot; ID</span>' :
-              srcLang === 'jp' ? '<span class="badge bjp">LAWAN &middot; JP</span>' :
-                                 '<span class="badge bcn">LAWAN &middot; CN</span>';
+              srcLang === 'jp' ? '<span class="badge bjp">' + (S.lang === 'jpcn' ? 'JEPANG' : 'LAWAN &middot; JP') + '</span>' :
+                                 '<span class="badge bcn">' + (S.lang === 'jpcn' ? 'MANDARIN' : 'LAWAN &middot; CN') + '</span>';
   var tlbl = isHistory ? (timeStr + ' (history)') : timeStr;
-  var body = '<div class="mmeta">' + badge + '<span class="mtime">' + tlbl + '</span></div>' +
+
+  // Replay button - pick first translation
+  var replayText = '';
+  var replayLang = '';
+  if (parsed.dir === 'id-both') { replayText = parsed.jp; replayLang = 'ja-JP'; }
+  else if (parsed.dir === 'id-jp') { replayText = parsed.translated; replayLang = 'ja-JP'; }
+  else if (parsed.dir === 'id-cn') { replayText = parsed.translated; replayLang = 'zh-CN'; }
+  else if (parsed.dir === 'jp-id' || parsed.dir === 'cn-id') { replayText = parsed.translated; replayLang = 'id-ID'; }
+  else if (parsed.dir === 'jp-cn') { replayText = parsed.translated; replayLang = 'zh-CN'; }
+  else if (parsed.dir === 'cn-jp') { replayText = parsed.translated; replayLang = 'ja-JP'; }
+
+  var replayBtn = replayText ?
+    '<button class="mreplay" onclick="replayMsg(' + JSON.stringify(replayText).replace(/"/g,'&quot;') + ',\'' + replayLang + '\')">&#x1F50A; ULANGI</button>' : '';
+
+  var body = '<div class="mmeta">' + badge + replayBtn + '<span class="mtime">' + tlbl + '</span></div>' +
              '<div class="morig">&ldquo;' + escHtml(original) + '&rdquo;</div>';
   if (parsed.dir === 'id-both') {
     body += '<div class="mtrans">&#x1F1EF;&#x1F1F5; ' + escHtml(parsed.jp) + '</div>' +
             '<hr class="mdiv">' +
             '<div class="mtrans">&#x1F1E8;&#x1F1F3; ' + escHtml(parsed.cn) + '</div>';
   } else {
-    var flag = parsed.dir === 'id-jp'  ? '&#x1F1EF;&#x1F1F5;' :
-               parsed.dir === 'id-cn'  ? '&#x1F1E8;&#x1F1F3;' : '&#x1F1EE;&#x1F1E9;';
+    var flag;
+    if (parsed.dir === 'id-jp' || parsed.dir === 'cn-jp') flag = '&#x1F1EF;&#x1F1F5;';
+    else if (parsed.dir === 'id-cn' || parsed.dir === 'jp-cn') flag = '&#x1F1E8;&#x1F1F3;';
+    else flag = '&#x1F1EE;&#x1F1E9;';
     body += '<div class="mtrans">' + flag + ' ' + escHtml(parsed.translated) + '</div>';
   }
   return body;
@@ -1089,11 +1495,9 @@ function addMessage(original, parsed, srcLang) {
   var div = document.createElement('div');
   div.className = 'msg s' + srcLang;
   div.innerHTML = buildMsgHtml(original, parsed, srcLang, now, false);
-  // Prepend - newest on top
   log.insertBefore(div, log.firstChild);
   log.scrollTop = 0;
-  // Save
-  transcript.push({ time: now, original: original, result: parsed, srcLang: srcLang });
+  transcript.push({ time: now, timeStamp: Date.now(), original: original, result: parsed, srcLang: srcLang });
   saveHistory();
 }
 
@@ -1104,15 +1508,13 @@ function addMessageFromHistory(entry) {
   var div = document.createElement('div');
   div.className = 'msg s' + entry.srcLang;
   div.innerHTML = buildMsgHtml(entry.original, entry.result, entry.srcLang, entry.time, true);
-  // History appended (older messages at bottom)
   log.appendChild(div);
 }
 
 // -- HISTORY -----------------------------------------------
 function saveHistory() {
-  try {
-    localStorage.setItem('ihist', JSON.stringify(transcript.slice(-200)));
-  } catch(e) {}
+  try { localStorage.setItem('ihist', JSON.stringify(transcript.slice(-200))); }
+  catch(e) {}
 }
 
 function loadHistory() {
@@ -1126,17 +1528,20 @@ function loadHistory() {
       transcript.push(e);
       addMessageFromHistory(e);
     });
-    if (entries.length) dbg('loaded ' + entries.length + ' history entries', 'ok');
-  } catch(e) { dbg('history load err: ' + e.message, 'err'); }
+    dbg('loaded ' + entries.length + ' history', 'ok');
+  } catch(e) { dbg('history err: ' + e.message, 'err'); }
 }
 
 function exportTranscript() {
-  if (!transcript.length) { toast('Belum ada percakapan untuk diexport', 'warn'); return; }
-  var txt = 'TRANSCRIPT LIVE INTERPRETER - Andono Imagine 2026\n';
+  if (!transcript.length) { toast('Belum ada percakapan', 'warn'); return; }
+  var txt = 'TRANSCRIPT - Andono Imagine Live Interpreter\n';
   txt += new Date().toLocaleString('id-ID') + '\n';
   txt += '='.repeat(40) + '\n\n';
   transcript.forEach(function(e) {
-    var who = e.srcLang === 'id' ? 'KAMU (ID)' : e.srcLang === 'jp' ? 'LAWAN (JP)' : 'LAWAN (CN)';
+    var who;
+    if (e.srcLang === 'id') who = 'KAMU (ID)';
+    else if (e.srcLang === 'jp') who = (S.lang === 'jpcn' ? 'JEPANG' : 'LAWAN (JP)');
+    else who = (S.lang === 'jpcn' ? 'MANDARIN' : 'LAWAN (CN)');
     txt += '[' + e.time + '] ' + who + '\n';
     txt += '  Asli: ' + e.original + '\n';
     if (e.result.dir === 'id-both') {
@@ -1154,6 +1559,11 @@ function exportTranscript() {
   a.click();
   URL.revokeObjectURL(url);
   toast('Transcript diexport', 'ok');
+}
+
+function onClearClick() {
+  if (!transcript.length) return;
+  askConfirm('Hapus semua riwayat?', 'Semua log percakapan akan dihapus permanen.', clearLog);
 }
 
 function clearLog() {
@@ -1202,7 +1612,7 @@ function setupVUMeter(stream) {
   function tick() {
     if (!S.running || !an) return;
     an.getByteFrequencyData(data);
-    var vs = Math.floor(300  / (audioCtx.sampleRate / an.fftSize));
+    var vs = Math.floor(300 / (audioCtx.sampleRate / an.fftSize));
     var ve = Math.floor(3400 / (audioCtx.sampleRate / an.fftSize));
     var sum = 0;
     for (var i = vs; i < ve; i++) sum += data[i];
@@ -1219,6 +1629,7 @@ function setupVUMeter(stream) {
     // VAD
     var isVoice = avg > VAD_THR;
     if (isVoice) {
+      lastVoiceTime = Date.now();
       if (!vadOn) {
         vadOn = true;
         var lt = ge('live-txt');
@@ -1281,24 +1692,9 @@ function resetVUBars() {
 function cleanupAudio() {
   cancelAnimationFrame(vuRAF);
   stopAndroidVU();
-  if (audioStream) { audioStream.getTracks().forEach(function(t) { t.stop(); }); audioStream = null; }
+  if (audioStream) { audioStream.getTracks().forEach(function(t){t.stop();}); audioStream = null; }
   if (audioCtx) { try { audioCtx.close(); } catch(x) {} audioCtx = null; }
 }
-
-function keepAudioFocus() {
-  if (!IS_ANDROID) return;
-  try {
-    if (!silentCtx || silentCtx.state === 'closed') silentCtx = new (window.AudioContext || window.webkitAudioContext)();
-    if (silentCtx.state === 'suspended') silentCtx.resume();
-    var buf = silentCtx.createBuffer(1, Math.floor(silentCtx.sampleRate * 0.1), silentCtx.sampleRate);
-    var src = silentCtx.createBufferSource();
-    src.buffer = buf; src.connect(silentCtx.destination); src.start();
-  } catch(x) { dbg('keepAudioFocus: ' + x.message); }
-}
-
-// -- ONLINE/OFFLINE ----------------------------------------
-window.addEventListener('offline', function() { toast('Koneksi internet terputus', 'err', 5000); });
-window.addEventListener('online',  function() { toast('Koneksi internet kembali', 'ok', 2000); });
 </script>
 </body>
 </html>
