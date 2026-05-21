@@ -1195,7 +1195,12 @@ function stopRecognition() {
 var sentenceBuffer = '';
 var sentenceBufferTime = 0;
 var sentenceBufferTmr = null;
-var SENTENCE_BUFFER_MS = 1800; // 1.8 detik
+var SENTENCE_BUFFER_MS = 1800;
+
+// Normalisasi untuk perbandingan: lowercase, hilangkan punctuation & extra spaces
+function normalizeForCompare(s) {
+  return String(s).toLowerCase().replace(/[.,!?;:'"()]/g, '').replace(/\s+/g, ' ').trim();
+}
 
 function triggerFinal() {
   var final = pending; pending = '';
@@ -1209,26 +1214,61 @@ function triggerFinal() {
   }
 
   // Cek apakah final baru adalah perluasan dari yang ada di buffer
-  if (sentenceBuffer && now - sentenceBufferTime < SENTENCE_BUFFER_MS + 500) {
-    // Cek extension (final mengandung buffer)
-    if (final.length > sentenceBuffer.length && final.toLowerCase().indexOf(sentenceBuffer.toLowerCase()) === 0) {
-      // Replace buffer dengan versi lengkap
-      dbg('buffer-replace: "' + sentenceBuffer + '" -> "' + final + '"', 'warn');
-      sentenceBuffer = final;
-    } else if (sentenceBuffer.length > final.length && sentenceBuffer.toLowerCase().indexOf(final.toLowerCase()) === 0) {
-      // Final lebih pendek tapi prefix sama - skip
-      dbg('buffer-skip-shorter: ' + final);
-      return;
-    } else {
-      // Kalimat baru - gabungkan dengan buffer (lanjutan dari kalimat sebelumnya)
-      dbg('buffer-append: "' + sentenceBuffer + '" + "' + final + '"', 'warn');
-      sentenceBuffer = sentenceBuffer + ' ' + final;
+  if (sentenceBuffer && now - sentenceBufferTime < SENTENCE_BUFFER_MS + 1500) {
+    var nFinal = normalizeForCompare(final);
+    var nBuffer = normalizeForCompare(sentenceBuffer);
+
+    // Kasus 1: final identik dengan buffer (setelah normalisasi) - skip
+    if (nFinal === nBuffer) {
+      dbg('buffer-dup-normalized: ' + final);
+      sentenceBufferTime = now;
     }
-    sentenceBufferTime = now;
+    // Kasus 2: final mengandung buffer di awal - replace dengan versi lengkap
+    else if (nFinal.length > nBuffer.length && nFinal.indexOf(nBuffer) === 0) {
+      dbg('buffer-replace (extension): -> "' + final.substring(0,40) + '..."', 'warn');
+      sentenceBuffer = final;
+      sentenceBufferTime = now;
+    }
+    // Kasus 3: buffer mengandung final di awal - skip (final lebih pendek/lama)
+    else if (nBuffer.length > nFinal.length && nBuffer.indexOf(nFinal) === 0) {
+      dbg('buffer-skip-shorter: ' + final);
+      sentenceBufferTime = now;
+    }
+    // Kasus 4: ada overlap parsial (mis. buffer berakhir dengan kata yang sama dengan awal final)
+    else {
+      // Cek kalau final mengandung buffer di mana saja - sudah jelas extension
+      if (nFinal.indexOf(nBuffer) !== -1) {
+        dbg('buffer-contains: -> "' + final.substring(0,40) + '..."', 'warn');
+        sentenceBuffer = final;
+        sentenceBufferTime = now;
+      }
+      // Cek kalau buffer mengandung final - skip
+      else if (nBuffer.indexOf(nFinal) !== -1) {
+        dbg('buffer-contained, skip', '');
+        sentenceBufferTime = now;
+      }
+      // Benar-benar kalimat lanjutan baru - append
+      else {
+        // Cek overlap kata-kata di ujung buffer dan awal final
+        var overlap = findOverlap(nBuffer, nFinal);
+        if (overlap > 0) {
+          // Ada overlap - gabung dengan menghilangkan duplikat
+          var bufferWords = sentenceBuffer.split(/\s+/);
+          var finalWords = final.split(/\s+/);
+          sentenceBuffer = bufferWords.concat(finalWords.slice(overlap)).join(' ');
+          dbg('buffer-merge-overlap(' + overlap + '): "' + sentenceBuffer.substring(0,50) + '..."', 'warn');
+        } else {
+          // No overlap - simple append
+          sentenceBuffer = sentenceBuffer + ' ' + final;
+          dbg('buffer-append-clean: "' + final + '"', 'warn');
+        }
+        sentenceBufferTime = now;
+      }
+    }
   } else {
-    // Mulai buffer baru
     sentenceBuffer = final;
     sentenceBufferTime = now;
+    dbg('buffer-start: ' + final.substring(0, 40));
   }
 
   // Reset timer - tunggu kalau ada lanjutan
@@ -1238,7 +1278,6 @@ function triggerFinal() {
     sentenceBuffer = '';
     sentenceBufferTime = 0;
     if (!combined || combined.length < 2) return;
-    // Final cek dedup
     var checkNow = Date.now();
     if (combined === lastFinal && checkNow - lastFinalTime < 3000) {
       dbg('post-buffer dup: ' + combined);
@@ -1246,9 +1285,23 @@ function triggerFinal() {
     }
     lastFinal = combined;
     lastFinalTime = checkNow;
-    dbg('FINAL (buffered): ' + combined, 'ok');
+    dbg('FINAL (buffered): ' + combined.substring(0, 60), 'ok');
     handleFinal(combined);
   }, SENTENCE_BUFFER_MS);
+}
+
+// Cari berapa kata di akhir buffer yang sama dengan awal final
+function findOverlap(buffer, final) {
+  var bw = buffer.split(/\s+/);
+  var fw = final.split(/\s+/);
+  // Coba overlap dari yang terpanjang ke terpendek
+  var maxOverlap = Math.min(bw.length, fw.length, 10);
+  for (var n = maxOverlap; n > 0; n--) {
+    var bufEnd = bw.slice(-n).join(' ');
+    var finStart = fw.slice(0, n).join(' ');
+    if (bufEnd === finStart) return n;
+  }
+  return 0;
 }
 
 // -- TRANSLATION -------------------------------------------
