@@ -454,7 +454,7 @@ var avuInt = null;
 var vadOn = false;
 var vadSilStart = 0;
 var VAD_THR = 15;
-var VAD_SIL = 1200;
+var VAD_SIL = 2500;
 var timerInt = null;
 var timerRem = 5000;
 var timerExtended = false;
@@ -1195,7 +1195,7 @@ function stopRecognition() {
 var sentenceBuffer = '';
 var sentenceBufferTime = 0;
 var sentenceBufferTmr = null;
-var SENTENCE_BUFFER_MS = 1800;
+var SENTENCE_BUFFER_MS = 2500;
 
 // Normalisasi untuk perbandingan: lowercase, hilangkan punctuation & extra spaces
 function normalizeForCompare(s) {
@@ -1316,6 +1316,34 @@ async function translateText(text, from, to) {
 
 async function handleFinal(text) {
   if (!text || text.length < 2) return;
+
+  // Cek apakah text adalah extension dari pesan log terakhir (dalam 6 detik)
+  // Jika ya, replace pesan log lama dengan versi lengkap
+  var now = Date.now();
+  var lastMsg = transcript.length ? transcript[transcript.length - 1] : null;
+  if (lastMsg && lastMsg.timeStamp && now - lastMsg.timeStamp < 6000) {
+    var nLast = normalizeForCompare(lastMsg.original);
+    var nNew = normalizeForCompare(text);
+    // Jika kalimat baru mengandung kalimat lama di awal → replace
+    if (nNew.length > nLast.length && nNew.indexOf(nLast) === 0) {
+      dbg('log-replace: extension dari pesan terakhir', 'warn');
+      // Hapus pesan log terakhir
+      var log = ge('log');
+      if (log && log.firstChild && log.firstChild.classList && log.firstChild.classList.contains('msg')) {
+        log.removeChild(log.firstChild);
+      }
+      transcript.pop();
+      S.sentences = Math.max(0, S.sentences - 1);
+      updateStats();
+      saveHistory();
+      // Lanjut proses kalimat lengkap di bawah
+    } else if (nLast.indexOf(nNew) !== -1) {
+      // Kalimat baru sudah tercakup dalam kalimat lama - skip
+      dbg('log-skip: sudah tercakup di pesan terakhir');
+      return;
+    }
+  }
+
   setStatus('pro', 'Menerjemahkan...');
   dbg('translate: ' + text.substring(0, 50));
   var src = detectSrcLang(text);
@@ -1469,7 +1497,7 @@ function addMessage(original, parsed, srcLang) {
   div.innerHTML = buildMsgHtml(original, parsed, srcLang, now, false);
   log.insertBefore(div, log.firstChild);
   log.scrollTop = 0;
-  transcript.push({ time: now, original: original, result: parsed, srcLang: srcLang });
+  transcript.push({ time: now, timeStamp: Date.now(), original: original, result: parsed, srcLang: srcLang });
   saveHistory();
 }
 
