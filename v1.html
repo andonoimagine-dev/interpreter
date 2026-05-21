@@ -71,6 +71,7 @@ body.xl .ltxt{line-height:1.45;}
 .chip.jp{color:var(--jp);border-color:rgba(244,114,182,.4);background:rgba(244,114,182,.08);}
 .chip.cn{color:var(--cn);border-color:rgba(251,146,60,.4);background:rgba(251,146,60,.08);}
 .chip.bo{color:var(--bo);border-color:rgba(167,139,250,.4);background:rgba(167,139,250,.08);}
+.chip.jpcn{color:#f59e9e;border-color:rgba(245,158,158,.4);background:rgba(245,158,158,.08);}
 .chip.ma{color:var(--id);border-color:rgba(74,222,128,.4);background:rgba(74,222,128,.08);}
 .chip.mb{color:var(--bo);border-color:rgba(167,139,250,.4);background:rgba(167,139,250,.08);}
 
@@ -264,6 +265,7 @@ body.xl .ltxt{line-height:1.45;}
       <button class="chip jp" id="lang-jp" onclick="setLang('jp')">&#x1F1EE;&#x1F1E9;&#x21D4;&#x1F1EF;&#x1F1F5; JEPANG</button>
       <button class="chip" id="lang-cn" onclick="setLang('cn')">&#x1F1EE;&#x1F1E9;&#x21D4;&#x1F1E8;&#x1F1F3; MANDARIN</button>
       <button class="chip" id="lang-both" onclick="setLang('both')">&#x1F1EF;&#x1F1F5;&#x1F1E8;&#x1F1F3; KEDUANYA</button>
+      <button class="chip" id="lang-jpcn" onclick="setLang('jpcn')">&#x1F1EF;&#x1F1F5;&#x21D4;&#x1F1E8;&#x1F1F3; JP&middot;CN</button>
     </div>
   </div>
 
@@ -443,6 +445,7 @@ var lastFinal = '';
 var lastFinalTime = 0;
 var silenceTmr = null;
 var lastPartial = '';
+var lastPartialTime = 0;
 var lastVoiceTime = 0;
 var audioStream = null;
 var audioCtx = null;
@@ -687,8 +690,13 @@ function setLiveLabel(side) {
   var el = ge('live-lbl');
   if (!el) return;
   if (!side) { el.textContent = 'YANG TERDENGAR'; return; }
-  if (side === 'id') el.textContent = 'YANG TERDENGAR - INDONESIA';
-  else el.textContent = 'YANG TERDENGAR - ' + (S.lang === 'cn' ? 'MANDARIN' : 'JEPANG');
+  if (S.lang === 'jpcn') {
+    // Mode JP<->CN
+    el.textContent = side === 'id' ? 'YANG TERDENGAR - JEPANG' : 'YANG TERDENGAR - MANDARIN';
+  } else {
+    if (side === 'id') el.textContent = 'YANG TERDENGAR - INDONESIA';
+    else el.textContent = 'YANG TERDENGAR - ' + (S.lang === 'cn' ? 'MANDARIN' : 'JEPANG');
+  }
 }
 
 function updateStats() {
@@ -700,13 +708,26 @@ function updateStats() {
 function setLang(l) {
   S.lang = l;
   localStorage.setItem('ilang', l);
-  ['jp','cn','both'].forEach(function(x) {
+  ['jp','cn','both','jpcn'].forEach(function(x) {
     var el = ge('lang-' + x);
     if (el) el.className = 'chip' + (x === l ? ' ' + l : '');
   });
   var ff = ge('tap-f-flag'); var fl = ge('tap-f-lbl');
-  if (ff) ff.textContent = l === 'cn' ? '🇨🇳' : '🇯🇵';
-  if (fl) fl.textContent = l === 'cn' ? 'MANDARIN' : 'JEPANG';
+  var ti = ge('tap-id');
+  var til = ti && ti.querySelector ? ti.querySelector('.taplbl') : null;
+  var tif = ti && ti.querySelector ? ti.querySelector('.tapflag') : null;
+
+  if (l === 'jpcn') {
+    if (tif) tif.textContent = '🇯🇵';
+    if (til) til.textContent = 'JEPANG';
+    if (ff) ff.textContent = '🇨🇳';
+    if (fl) fl.textContent = 'MANDARIN';
+  } else {
+    if (tif) tif.textContent = '🇮🇩';
+    if (til) til.textContent = 'INDONESIA';
+    if (ff) ff.textContent = l === 'cn' ? '🇨🇳' : '🇯🇵';
+    if (fl) fl.textContent = l === 'cn' ? 'MANDARIN' : 'JEPANG';
+  }
   if (S.running) restartFromConfig();
 }
 
@@ -763,6 +784,8 @@ function foreignLang() {
 }
 
 function langCode(side) {
+  // Mode jpcn: side 'id' artinya JP (sisi kiri), side 'foreign' artinya CN (sisi kanan)
+  if (S.lang === 'jpcn') return side === 'id' ? 'ja-JP' : 'zh-CN';
   return side === 'id' ? 'id-ID' : foreignLang();
 }
 
@@ -916,7 +939,13 @@ function updateTimerUI() {
   var f = ge('timer-fill');
   if (f) { f.style.width = Math.max(0, Math.min(100, pct)) + '%'; f.style.background = pct > 50 ? '#4ade80' : pct > 20 ? '#fbbf24' : '#f87171'; }
   var l = ge('timer-lang');
-  if (l) l.textContent = S.cycleSide === 'id' ? '🇮🇩 ID' : (S.lang === 'cn' ? '🇨🇳 CN' : '🇯🇵 JP');
+  if (l) {
+    if (S.lang === 'jpcn') {
+      l.textContent = S.cycleSide === 'id' ? '🇯🇵 JP' : '🇨🇳 CN';
+    } else {
+      l.textContent = S.cycleSide === 'id' ? '🇮🇩 ID' : (S.lang === 'cn' ? '🇨🇳 CN' : '🇯🇵 JP');
+    }
+  }
   var sc = ge('timer-secs');
   if (sc) sc.textContent = Math.max(0, Math.ceil(timerRem / 1000)) + 's';
 }
@@ -949,10 +978,13 @@ function updateTapUI() {
   if (tfs) tfs.textContent = 'Tap untuk giliran';
   if (!S.tapSide) return;
   if (S.tapSide === 'id') {
-    if (ti) ti.className = 'tapbtn lid';
+    // Sisi kiri: di mode jpcn = JP, di mode lain = ID
+    var clsId = S.lang === 'jpcn' ? 'ljp' : 'lid';
+    if (ti) ti.className = 'tapbtn ' + clsId;
     if (tis) tis.textContent = '🎙 Mendengarkan';
   } else {
-    var cls = S.lang === 'cn' ? 'lcn' : 'ljp';
+    // Sisi kanan: di mode jpcn = CN, di mode lain = JP atau CN
+    var cls = S.lang === 'jpcn' ? 'lcn' : (S.lang === 'cn' ? 'lcn' : 'ljp');
     if (tf) tf.className = 'tapbtn ' + cls;
     if (tfs) tfs.textContent = '🎙 Mendengarkan';
   }
@@ -1030,18 +1062,36 @@ async function startRecognition(lang) {
         if (!txt) continue;
         setLiveText(txt, 'par');
         dbg('partial: ' + txt.substring(0, 40));
+
+        // Hanya update tracker kalau partial benar-benar berbeda
         if (txt !== lastPartial) {
+          // Catat: partial masih BERKEMBANG (kamu masih bicara)
+          // Reset silence timer dengan durasi lebih lama
           lastPartial = txt;
-          // Smart Mode A: kalau lagi listening dan timer hampir habis, perpanjang
+          lastPartialTime = Date.now();
+
+          // Smart Mode A extension
           if (S.mode === 'a' && S.smartTimer && timerInt && timerRem < 1500 && !timerExtended) {
             timerExtended = true;
             timerRem = 3000;
             ge('timer-smart').classList.add('on');
             dbg('smart extend on partial', 'ok');
           }
+
+          // Clear timer lama, set yang baru
           clearTimeout(silenceTmr);
-          var silMs = IS_ANDROID ? 1500 : 1800;
+          // Durasi lebih lama untuk hindari potong di tengah kalimat
+          // Android: 2.5 detik (lebih lama karena partial lambat)
+          // Desktop: 2.2 detik
+          var silMs = IS_ANDROID ? 2500 : 2200;
           silenceTmr = setTimeout(function() {
+            // Double-check: partial harus benar-benar stabil
+            // (tidak ada update dalam silMs terakhir)
+            var sinceLastChange = Date.now() - lastPartialTime;
+            if (sinceLastChange < silMs - 200) {
+              dbg('partial still active, skip force-final', '');
+              return;
+            }
             if (lastPartial && lastPartial.length >= 2 && !S.speaking) {
               dbg('silence-force: ' + lastPartial, 'warn');
               var t = lastPartial; lastPartial = '';
@@ -1052,15 +1102,18 @@ async function startRecognition(lang) {
             }
           }, silMs);
         }
+        // Kalau partial SAMA dengan sebelumnya, jangan reset timer
+        // Timer terus jalan sampai silMs total
         continue;
       }
 
-      // Final result
+      // Final result dari API
       if (txt.length < 2) continue;
       dbg('api-final: ' + txt.substring(0, 40), 'ok');
       setLiveText(txt, 'fin');
       clearTimeout(silenceTmr);
       lastPartial = '';
+      lastPartialTime = 0;
       if (txt.length > pending.length) pending = txt;
       clearTimeout(pendingTmr);
       pendingTmr = setTimeout(function(){ triggerFinal(); }, 300);
@@ -1136,8 +1189,30 @@ function triggerFinal() {
   var final = pending; pending = '';
   if (!final || final.length < 2) return;
   var now = Date.now();
+  // Block exact duplicate dalam 3 detik
   if (final === lastFinal && now - lastFinalTime < 3000) {
-    dbg('dup: ' + final); return;
+    dbg('dup exact: ' + final); return;
+  }
+  // Kalau final baru adalah PERLUASAN dari lastFinal yang baru saja diproses (dalam 6 detik),
+  // artinya partial sebelumnya keburu di-trigger di tengah kalimat
+  // Solusi: hapus pesan log terakhir, lalu proses kalimat lengkap
+  var isExtension = lastFinal && now - lastFinalTime < 6000 &&
+                    final.length > lastFinal.length &&
+                    final.toLowerCase().indexOf(lastFinal.toLowerCase()) === 0;
+  if (isExtension) {
+    dbg('extension detected, replacing: "' + lastFinal + '" -> "' + final + '"', 'warn');
+    // Hapus pesan log terakhir
+    var log = ge('log');
+    if (log && log.firstChild && log.firstChild.classList && log.firstChild.classList.contains('msg')) {
+      log.removeChild(log.firstChild);
+      // Hapus juga dari transcript array
+      if (transcript.length) {
+        transcript.pop();
+        S.sentences = Math.max(0, S.sentences - 1);
+        updateStats();
+        saveHistory();
+      }
+    }
   }
   lastFinal = final;
   lastFinalTime = now;
@@ -1163,7 +1238,29 @@ async function handleFinal(text) {
   dbg('src: ' + src);
   try {
     var result;
-    if (src === 'id') {
+
+    // Mode JP <-> CN
+    if (S.lang === 'jpcn') {
+      if (src === 'jp') {
+        var tl = await translateText(text, 'ja', 'zh-CN');
+        result = { dir: 'jp-cn', translated: tl };
+        addMessage(text, result, 'jp');
+        if (!S.muted) queueSpeech(tl, 'zh-CN');
+      } else if (src === 'cn') {
+        var tl = await translateText(text, 'zh-CN', 'ja');
+        result = { dir: 'cn-jp', translated: tl };
+        addMessage(text, result, 'cn');
+        if (!S.muted) queueSpeech(tl, 'ja-JP');
+      } else {
+        // ID terdeteksi di mode jpcn — fallback terjemahkan ke kedua bahasa
+        var res = await Promise.all([translateText(text, 'id', 'ja'), translateText(text, 'id', 'zh-CN')]);
+        result = { dir: 'id-both', jp: res[0], cn: res[1] };
+        addMessage(text, result, 'id');
+        if (!S.muted) queueSpeech(res[0], 'ja-JP');
+      }
+    }
+    // Mode normal (ID-JP, ID-CN, ID-Both)
+    else if (src === 'id') {
       if (S.lang === 'both') {
         var res = await Promise.all([translateText(text, 'id', 'ja'), translateText(text, 'id', 'zh-CN')]);
         result = { dir: 'id-both', jp: res[0], cn: res[1] };
@@ -1245,8 +1342,8 @@ function replayMsg(text, lang) {
 // -- MESSAGE LOG -------------------------------------------
 function buildMsgHtml(original, parsed, srcLang, timeStr, isHistory, msgId) {
   var badge = srcLang === 'id' ? '<span class="badge bid">KAMU &middot; ID</span>' :
-              srcLang === 'jp' ? '<span class="badge bjp">LAWAN &middot; JP</span>' :
-                                 '<span class="badge bcn">LAWAN &middot; CN</span>';
+              srcLang === 'jp' ? '<span class="badge bjp">' + (S.lang === 'jpcn' ? 'JEPANG' : 'LAWAN &middot; JP') + '</span>' :
+                                 '<span class="badge bcn">' + (S.lang === 'jpcn' ? 'MANDARIN' : 'LAWAN &middot; CN') + '</span>';
   var tlbl = isHistory ? (timeStr + ' (history)') : timeStr;
 
   // Replay button - pick first translation
@@ -1256,6 +1353,8 @@ function buildMsgHtml(original, parsed, srcLang, timeStr, isHistory, msgId) {
   else if (parsed.dir === 'id-jp') { replayText = parsed.translated; replayLang = 'ja-JP'; }
   else if (parsed.dir === 'id-cn') { replayText = parsed.translated; replayLang = 'zh-CN'; }
   else if (parsed.dir === 'jp-id' || parsed.dir === 'cn-id') { replayText = parsed.translated; replayLang = 'id-ID'; }
+  else if (parsed.dir === 'jp-cn') { replayText = parsed.translated; replayLang = 'zh-CN'; }
+  else if (parsed.dir === 'cn-jp') { replayText = parsed.translated; replayLang = 'ja-JP'; }
 
   var replayBtn = replayText ?
     '<button class="mreplay" onclick="replayMsg(' + JSON.stringify(replayText).replace(/"/g,'&quot;') + ',\'' + replayLang + '\')">&#x1F50A; ULANGI</button>' : '';
@@ -1267,8 +1366,10 @@ function buildMsgHtml(original, parsed, srcLang, timeStr, isHistory, msgId) {
             '<hr class="mdiv">' +
             '<div class="mtrans">&#x1F1E8;&#x1F1F3; ' + escHtml(parsed.cn) + '</div>';
   } else {
-    var flag = parsed.dir === 'id-jp' ? '&#x1F1EF;&#x1F1F5;' :
-               parsed.dir === 'id-cn' ? '&#x1F1E8;&#x1F1F3;' : '&#x1F1EE;&#x1F1E9;';
+    var flag;
+    if (parsed.dir === 'id-jp' || parsed.dir === 'cn-jp') flag = '&#x1F1EF;&#x1F1F5;';
+    else if (parsed.dir === 'id-cn' || parsed.dir === 'jp-cn') flag = '&#x1F1E8;&#x1F1F3;';
+    else flag = '&#x1F1EE;&#x1F1E9;';
     body += '<div class="mtrans">' + flag + ' ' + escHtml(parsed.translated) + '</div>';
   }
   return body;
@@ -1325,7 +1426,10 @@ function exportTranscript() {
   txt += new Date().toLocaleString('id-ID') + '\n';
   txt += '='.repeat(40) + '\n\n';
   transcript.forEach(function(e) {
-    var who = e.srcLang === 'id' ? 'KAMU (ID)' : e.srcLang === 'jp' ? 'LAWAN (JP)' : 'LAWAN (CN)';
+    var who;
+    if (e.srcLang === 'id') who = 'KAMU (ID)';
+    else if (e.srcLang === 'jp') who = (S.lang === 'jpcn' ? 'JEPANG' : 'LAWAN (JP)');
+    else who = (S.lang === 'jpcn' ? 'MANDARIN' : 'LAWAN (CN)');
     txt += '[' + e.time + '] ' + who + '\n';
     txt += '  Asli: ' + e.original + '\n';
     if (e.result.dir === 'id-both') {
