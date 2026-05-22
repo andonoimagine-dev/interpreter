@@ -32,13 +32,13 @@ body.xl{--lfs:28px;--mfs:20px;}
 .ls-btn:hover{background:#1e1e2a;}
 .ls-err{font-size:12px;color:#f87171;min-height:16px;}
 
-/* -- APP MAIN STRUCT REVISED -- */
+/* -- APP MAIN STRUCT -- */
 #app{display:none;flex-direction:column;height:100vh;min-height:0;}
 
-/* -- TOPMOST HEADER -- */
+/* -- TOPMOST HEADER (FIXED BUG) -- */
 .hdr{
   padding:12px 20px;border-bottom:1px solid var(--b1);
-  display:flex;align-items:center;justify-content:between;gap:15px;flex-shrink:0;
+  display:flex;align-items:center;justify-content:space-between;gap:15px;flex-shrink:0;
   background:var(--sur);
 }
 .logo{font-size:15px;font-weight:700;letter-spacing:.15em;color:var(--tx);white-space:nowrap;flex-shrink:0;}
@@ -54,7 +54,7 @@ body.xl{--lfs:28px;--mfs:20px;}
 
 /* -- RESPONSIVE DASHBOARD GRID -- */
 .dashboard{
-  display:flex;flex:1;min-height:0;flex-direction:column; /* Stack default on Mobile */
+  display:flex;flex:1;min-height:0;flex-direction:column;
 }
 .panel-control{
   display:flex;flex-direction:column;flex-shrink:0;
@@ -65,7 +65,7 @@ body.xl{--lfs:28px;--mfs:20px;}
   border-top:1px solid var(--b1);background:var(--bg);
 }
 
-/* DESKTOP RESPONSIVE LAYOUT */
+/* DESKTOP RESPONSIVE LAYOUT (2 KOLOM) */
 @media (min-width: 992px) {
   .dashboard { flex-direction: row; }
   .panel-control { width: 440px; border-right: 1px solid var(--b1); }
@@ -715,7 +715,12 @@ function toggleMute() { S.muted=!S.muted; localStorage.setItem('imute',S.muted?'
 
 // -- LANGUAGE HELPERS --------------------------------------
 function forLang() { return S.lang==='cn'?'zh-CN':'ja-JP'; }
-function lCode(side) { if(S.lang==='jpcn') return side==='id'?'ja-JP':'zh-CN'; return side==='id'?'id-ID':forLang(); }
+// Memastikan mapping code bahasa aman untuk skenario gabungan
+function lCode(side) { 
+  if(S.lang==='jpcn') return side==='id'?'ja-JP':'zh-CN'; 
+  if(S.lang==='both') return side==='id'?'id-ID':'ja-JP';
+  return side==='id'?'id-ID':forLang(); 
+}
 function detectSrc(text) {
   var kana=(text.match(/[\u3040-\u30ff]/g)||[]).length;
   var cjk=(text.match(/[\u4e00-\u9fff]/g)||[]).length;
@@ -869,7 +874,7 @@ function clearTimerA() { clearInterval(timerInt); timerInt=null; var el=ge('tsma
 function updateTimerUI() {
   var max=timerExt?3000:S.timerMs; var pct=(timerRem/max)*100;
   var f=ge('tfill'); if(f){f.style.width=Math.max(0,Math.min(100,pct))+'%';f.style.background=pct>50?'#4ade80':pct>20?'#fbbf24':'#f87171';}
-  var l=ge('tlang'); if(l) l.textContent=S.lang==='jpcn'?(S.cycleSide==='id'?'🇯🇵 JP':'🇨🇳 CN'):(S.cycleSide==='id'?'🇮🇩 ID':(S.lang==='cn'?'🇨🇳 CN':'🇯🇵 JP'));
+  var l=ge('tlang'); if(l) l.textContent=S.lang==='jpcn'?(S.cycleSide==='id'?'🇯🇵 JP':'🇨🇳 CN') : (S.cycleSide==='id'?'🇮🇩 ID':(S.lang==='cn'?'🇨🇳 CN':'🇯🇵 JP'));
   var s=ge('tsecs'); if(s) s.textContent=Math.max(0,Math.ceil(timerRem/1000))+'s';
 }
 
@@ -877,7 +882,10 @@ function updateTimerUI() {
 function tap(side) {
   if(!S.running||S.speaking) return;
   if(S.tapSide===side) return;
-  S.tapSide=side; updateTapUI(); stopRec();
+  S.tapSide=side; 
+  clearTimeout(silTmr); clearTimeout(pendingTmr);
+  pending=''; lastPartial=''; 
+  updateTapUI(); stopRec();
   setLiveLbl(side); setLiveTxt('Mendengarkan...','emp');
   setTimeout(function(){ if(S.running&&S.tapSide===side) startRec(lCode(side)); }, 200);
 }
@@ -1122,7 +1130,6 @@ function buildMsgHtml(original,parsed,srcLang,timeStr,isHistory){
   return body;
 }
 
-// Target log sekarang ada di dalam .panel-log container
 function addMsg(original,parsed,srcLang){
   var log=ge('log');
   var emp=ge('empstate'); if(emp) emp.remove();
