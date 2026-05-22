@@ -12,7 +12,7 @@
 :root{
   --bg:#0a0a0f;--sur:#13131a;--sur2:#1c1c26;
   --b1:rgba(255,255,255,.08);--b2:rgba(255,255,255,.14);
-  --tx:#e8e8f0;--mu:#8a8a9e; /* Sedikit mencerahkan teks muted untuk kontras rasio */
+  --tx:#e8e8f0;--mu:#8a8a9e;
   --id:#4ade80;--jp:#f472b6;--cn:#fb923c;--bo:#a78bfa;
   --fn:'IBM Plex Mono',monospace;
   --lfs:20px;--mfs:15px;
@@ -54,19 +54,19 @@ body.xl{--lfs:26px;--mfs:18px;}
 /* -- STRUCTURE MAP -- */
 #app{display:none;flex-direction:column;height:100vh;height:-webkit-fill-available;min-height:0;overflow:hidden;}
 
-/* -- HEADER -- */
+/* -- HEADER RE-ARCHITECTED -- */
 .hdr{
   padding:12px 16px;border-bottom:1px solid var(--b1);
-  display:flex;align-items:center;justify-content:space-between;gap:12px;flex-shrink:0;
+  display:flex;flex-direction:row;align-items:center;justify-content:space-between;gap:12px;flex-shrink:0;
   background:var(--sur);
 }
-.hdr-left{display:flex;align-items:center;gap:14px;}
-.logo{font-size:13px;font-weight:700;letter-spacing:.12em;color:var(--tx);white-space:nowrap;}
+.hdr-left{display:flex;flex-direction:column;gap:4px;}
+.logo{font-size:14px;font-weight:700;letter-spacing:.12em;color:var(--tx);white-space:nowrap;}
 .brand-box{display:flex;align-items:center;gap:6px;font-size:11px;color:var(--mu);white-space:nowrap;}
 .netdot{width:7px;height:7px;border-radius:50%;background:var(--id);flex-shrink:0;}
 .netdot.off{background:#f87171;animation:blink 1.4s infinite;}
-.hdr-btns{display:flex;align-items:center;gap:6px;flex-shrink:0;margin-left:auto;}
-.hbtn{background:none;border:1px solid var(--b1);border-radius:4px;color:var(--mu);font-family:var(--fn);font-size:11px;min-width:32px;height:32px;padding:0 6px;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;transition:all .15s;}
+.hdr-btns{display:flex;align-items:center;gap:6px;flex-shrink:0;}
+.hbtn{background:none;border:1px solid var(--b1);border-radius:4px;color:var(--mu);font-family:var(--fn);font-size:11px;min-width:34px;height:34px;padding:0 6px;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;transition:all .15s;}
 .hbtn:hover{color:var(--tx);border-color:var(--b2);background:var(--sur2);}
 .hbtn.on{color:var(--id);border-color:rgba(74,222,128,.35);background:rgba(74,222,128,0.05);}
 .hbtn.dbg-on{color:#0f0;border-color:#0f04;}
@@ -88,6 +88,8 @@ body.xl{--lfs:26px;--mfs:18px;}
 @media (min-width: 992px) {
   .dashboard { flex-direction: row; }
   .panel-control { width: 420px; max-height: 100%; border-right: 1px solid var(--b1); border-bottom: none; overflow-y: auto; }
+  .hdr-left { flex-direction: row; align-items: center; gap: 14px; }
+  .hdr-left .brand-box { margin-top: 2px; }
 }
 
 /* -- DASHBOARD INTERACTIVE OBJECTS -- */
@@ -105,7 +107,7 @@ body.xl{--lfs:26px;--mfs:18px;}
 .sec{padding:10px 14px;border-bottom:1px solid var(--b1);flex-shrink:0;}
 .row{display:flex;align-items:center;gap:6px;flex-wrap:wrap;}
 
-.chip{padding:8px 10px;min-height:36px;border-radius:6px;border:1px solid var(--b2);background:transparent;font-family:var(--fn);font-size:11px;color:var(--mu);cursor:pointer;letter-spacing:.02em;transition:all .15s;white-space:nowrap;flex:1;text-align:center;display:inline-flex;align-items:center;justify-content:center;font-weight:500;}
+.chip{padding:8px 10px;min-height:38px;border-radius:6px;border:1px solid var(--b2);background:transparent;font-family:var(--fn);font-size:11px;color:var(--mu);cursor:pointer;letter-spacing:.02em;transition:all .15s;white-space:nowrap;flex:1;text-align:center;display:inline-flex;align-items:center;justify-content:center;font-weight:500;}
 .chip:hover{color:var(--tx);background:var(--sur);}
 .chip.jp{color:var(--jp);border-color:rgba(244,114,182,.4);background:rgba(244,114,182,.08);}
 .chip.cn{color:var(--cn);border-color:rgba(251,146,60,.4);background:rgba(251,146,60,.08);}
@@ -189,7 +191,6 @@ body.xl{--lfs:26px;--mfs:18px;}
 .badge{font-size:10px;padding:2px 5px;border-radius:3px;font-weight:600;}
 .bid{background:rgba(74,222,128,.1);color:var(--id);border:1px solid rgba(74,222,128,.3);}
 .bjp{background:rgba(244,114,182,.1);color:var(--jp);border:1px solid rgba(244,114,182,.3);}
-/* Perbaikan typo sintaks bawaan dari .bcn">background menjadi CSS murni */
 .bcn{background:rgba(251,146,60,.1);color:var(--cn);border:1px solid rgba(251,146,60,.3);}
 
 /* -- TOAST SYSTEM -- */
@@ -226,17 +227,32 @@ body.xl{--lfs:26px;--mfs:18px;}
   .bmain, .bsm { height: 38px; }
 }
 
-/* Penyelarasan untuk HP Layar Kecil (Portrait Mode) */
-@media (max-width: 480px) {
-  .hdr { padding: 8px 12px; gap: 6px; }
-  .hdr-left { gap: 8px; }
-  .logo { font-size: 11px; letter-spacing: 0.08em; }
-  .brand-box { font-size: 10px; }
-  .hdr-btns { gap: 4px; }
-  .hbtn { height: 30px; min-width: 30px; font-size: 10px; }
-  .panel-control { max-height: 50vh; }
-  .chip { min-height: 34px; font-size: 10px; padding: 6px 8px; }
-  .tapbtn { min-height: 68px; }
+/* Penyelarasan Khusus Mode Portrait Mobile (Mencegah tombol terpotong) */
+@media (max-width: 767px) {
+  .hdr {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 12px;
+    padding: 12px 14px;
+  }
+  .hdr-left {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+  .hdr-btns {
+    width: 100%;
+    justify-content: space-between; /* Menyebar tombol secara rapi di baris kedua */
+    gap: 4px;
+  }
+  .hbtn {
+    flex: 1; /* Tombol membesar secara proporsional mengisi lebar layar */
+    height: 36px;
+    font-size: 11px;
+  }
+  .panel-control { max-height: 52vh; }
+  .chip { min-height: 36px; font-size: 11px; padding: 6px 6px; }
+  .tapbtn { min-height: 70px; }
 }
 </style>
 </head>
