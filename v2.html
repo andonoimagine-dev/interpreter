@@ -1,0 +1,1395 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,user-scalable=no">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="theme-color" content="#0a0a0f">
+<title>Live Interpreter - Andono Imagine</title>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:ital,wght@0,400;0,500;1,400&family=Noto+Sans+JP&family=Noto+Sans+SC&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#0a0a0f;--sur:#13131a;--sur2:#1c1c26;
+  --b1:rgba(255,255,255,.08);--b2:rgba(255,255,255,.14);
+  --tx:#e8e8f0;--mu:#6b6b80;
+  --id:#4ade80;--jp:#f472b6;--cn:#fb923c;--bo:#a78bfa;
+  --fn:'IBM Plex Mono',monospace;
+  --lfs:20px;--mfs:16px;
+}
+*{box-sizing:border-box;margin:0;padding:0;}
+body{background:var(--bg);color:var(--tx);font-family:var(--fn);min-height:100vh;display:flex;flex-direction:column;overflow-x:hidden;}
+body.xl{--lfs:28px;--mfs:20px;}
+
+/* LOCK */
+.ls{position:fixed;inset:0;background:var(--bg);display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:9999;gap:18px;padding:24px;transition:opacity .4s;}
+.ls.out{opacity:0;pointer-events:none;}
+.ls-icon{font-size:44px;opacity:.45;}
+.ls-title{font-size:12px;letter-spacing:.15em;color:var(--mu);text-transform:uppercase;}
+.ls-inp{width:100%;max-width:280px;background:var(--sur2);border:1px solid var(--b2);border-radius:6px;padding:12px 16px;font-size:16px;font-family:var(--fn);color:var(--tx);outline:none;text-align:center;letter-spacing:.12em;}
+.ls-inp:focus{border-color:rgba(255,255,255,.3);}
+.ls-btn{width:100%;max-width:280px;padding:12px;border-radius:6px;border:1px solid var(--b2);background:var(--sur2);font-family:var(--fn);font-size:13px;font-weight:500;color:var(--tx);cursor:pointer;letter-spacing:.08em;}
+.ls-btn:hover{background:#1e1e2a;}
+.ls-err{font-size:12px;color:#f87171;min-height:16px;}
+
+/* APP */
+#app{display:none;flex-direction:column;flex:1;min-height:0;}
+
+/* HEADER */
+.hdr{padding:11px 18px;border-bottom:1px solid var(--b1);display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;flex-shrink:0;}
+.logo{font-size:13px;letter-spacing:.1em;color:var(--mu);}
+.logo span{color:var(--tx);font-weight:500;}
+.brand{font-size:10px;color:var(--mu);letter-spacing:.06em;display:flex;align-items:center;gap:6px;}
+.netdot{width:6px;height:6px;border-radius:50%;background:var(--id);flex-shrink:0;}
+.netdot.off{background:#f87171;animation:blink 1.4s infinite;}
+
+/* STAT BAR */
+.sbar{padding:7px 18px;border-bottom:1px solid var(--b1);display:flex;align-items:center;gap:10px;font-size:11px;color:var(--mu);letter-spacing:.05em;flex-shrink:0;flex-wrap:wrap;}
+.snum{color:var(--tx);font-weight:500;}
+.ncb{display:inline-flex;align-items:center;gap:4px;padding:2px 8px;border-radius:999px;font-size:10px;border:1px solid var(--b2);background:var(--sur2);color:var(--mu);transition:all .3s;}
+.ncb.on{color:#60a5fa;border-color:rgba(96,165,250,.4);background:rgba(96,165,250,.08);}
+.ncd{width:5px;height:5px;border-radius:50%;background:var(--mu);flex-shrink:0;transition:all .3s;}
+.ncb.on .ncd{background:#60a5fa;box-shadow:0 0 5px #60a5fa;animation:blink 1.8s infinite;}
+.sbtns{margin-left:auto;display:flex;gap:6px;flex-wrap:wrap;}
+.sbtn{background:none;border:1px solid var(--b1);border-radius:4px;color:var(--mu);font-family:var(--fn);font-size:10px;padding:2px 7px;cursor:pointer;transition:all .15s;}
+.sbtn:hover{color:var(--tx);border-color:var(--b2);}
+.sbtn.on{color:var(--id);border-color:rgba(74,222,128,.35);}
+.sbtn.dbg-on{color:#0f0;border-color:#0f04;}
+
+/* SECTIONS */
+.sec{padding:10px 18px;border-bottom:1px solid var(--b1);flex-shrink:0;}
+.row{display:flex;align-items:center;gap:8px;flex-wrap:wrap;}
+.rl{font-size:11px;color:var(--mu);letter-spacing:.07em;white-space:nowrap;}
+
+/* CHIPS */
+.chip{padding:5px 12px;border-radius:4px;border:1px solid var(--b2);background:transparent;font-family:var(--fn);font-size:12px;color:var(--mu);cursor:pointer;letter-spacing:.05em;transition:all .15s;}
+.chip:hover{color:var(--tx);}
+.chip.jp{color:var(--jp);border-color:rgba(244,114,182,.4);background:rgba(244,114,182,.08);}
+.chip.cn{color:var(--cn);border-color:rgba(251,146,60,.4);background:rgba(251,146,60,.08);}
+.chip.bo{color:var(--bo);border-color:rgba(167,139,250,.4);background:rgba(167,139,250,.08);}
+.chip.jpcn{color:#f59e9e;border-color:rgba(245,158,158,.4);background:rgba(245,158,158,.08);}
+.chip.ma{color:var(--id);border-color:rgba(74,222,128,.4);background:rgba(74,222,128,.08);}
+.chip.mb{color:var(--bo);border-color:rgba(167,139,250,.4);background:rgba(167,139,250,.08);}
+
+/* SLIDER / SELECT */
+.tslider{flex:1;min-width:80px;accent-color:var(--id);cursor:pointer;}
+.tval{font-size:13px;font-weight:500;color:var(--id);min-width:48px;text-align:right;}
+.spsel{background:var(--sur2);border:1px solid var(--b2);border-radius:4px;color:var(--tx);font-family:var(--fn);font-size:11px;padding:3px 6px;cursor:pointer;}
+
+/* TIMER BAR */
+.tbar{padding:10px 18px;border-bottom:1px solid var(--b1);flex-shrink:0;}
+.ttrack{flex:1;height:4px;background:var(--sur2);border-radius:2px;overflow:hidden;min-width:60px;}
+.tfill{height:100%;background:var(--id);transition:width .1s linear;}
+.tlang{font-size:12px;font-weight:500;min-width:56px;text-align:right;}
+.tsecs{font-size:11px;color:var(--mu);min-width:24px;text-align:right;}
+.tsmart{font-size:9px;color:var(--bo);padding:1px 5px;border-radius:3px;background:rgba(167,139,250,.1);border:1px solid rgba(167,139,250,.3);display:none;}
+.tsmart.on{display:inline-block;animation:spulse 1s infinite;}
+@keyframes spulse{0%,100%{opacity:.7}50%{opacity:1}}
+
+/* TAP PANEL */
+.taprow{display:flex;gap:10px;padding:10px 18px;border-bottom:1px solid var(--b1);flex-shrink:0;}
+.tapbtn{flex:1;padding:16px 8px;border-radius:8px;border:1px solid var(--b2);background:var(--sur2);font-family:var(--fn);cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:6px;transition:all .2s;color:var(--mu);user-select:none;-webkit-user-select:none;-webkit-tap-highlight-color:transparent;}
+.tapflag{font-size:30px;}
+.taplbl{font-size:12px;letter-spacing:.08em;font-weight:500;}
+.tapst{font-size:11px;min-height:15px;opacity:.75;}
+.tapbtn.lid{border-color:rgba(74,222,128,.6);background:rgba(74,222,128,.1);color:var(--id);animation:ps 1.4s infinite;}
+.tapbtn.ljp{border-color:rgba(244,114,182,.6);background:rgba(244,114,182,.1);color:var(--jp);animation:ps 1.4s infinite;}
+.tapbtn.lcn{border-color:rgba(251,146,60,.6);background:rgba(251,146,60,.1);color:var(--cn);animation:ps 1.4s infinite;}
+@keyframes ps{0%,100%{opacity:1}50%{opacity:.75}}
+
+/* SWAP BTN */
+.swaprow{padding:8px 18px;border-bottom:1px solid var(--b1);display:none;flex-shrink:0;justify-content:center;}
+.swaprow.on{display:flex;}
+.swaprow button{padding:9px 20px;border-radius:999px;border:1px solid var(--b2);background:var(--sur2);color:var(--tx);font-family:var(--fn);font-size:12px;letter-spacing:.06em;cursor:pointer;display:flex;align-items:center;gap:8px;-webkit-tap-highlight-color:transparent;}
+
+/* LIVE BOX */
+.lbox{padding:14px 18px;border-bottom:1px solid var(--b1);min-height:72px;background:var(--sur);display:flex;flex-direction:column;justify-content:center;gap:5px;flex-shrink:0;transition:background .3s;}
+.lbox.act{background:rgba(74,222,128,.04);}
+.llbl{font-size:10px;color:var(--mu);letter-spacing:.1em;display:flex;align-items:center;gap:6px;}
+.ltxt{font-size:var(--lfs);color:var(--tx);line-height:1.4;font-family:'Noto Sans JP','Noto Sans SC',var(--fn);min-height:24px;word-break:break-word;}
+.ltxt.emp{color:var(--mu);font-style:italic;font-size:13px;}
+.ltxt.par{color:#fbbf24;}
+.ltxt.fin{color:var(--id);}
+
+/* STATUS BAR */
+.stbar{padding:10px 18px;border-bottom:1px solid var(--b1);display:flex;align-items:center;gap:10px;flex-shrink:0;}
+.dot{width:9px;height:9px;border-radius:50%;background:var(--mu);flex-shrink:0;transition:all .3s;}
+.dot.lis{background:var(--id);box-shadow:0 0 8px var(--id);animation:blink 1.4s infinite;}
+.dot.pro{background:var(--bo);box-shadow:0 0 8px var(--bo);}
+.dot.spk{background:#60a5fa;box-shadow:0 0 8px #60a5fa;animation:blink 1s infinite;}
+.dot.init{background:#fbbf24;box-shadow:0 0 8px #fbbf24;animation:blink .8s infinite;}
+@keyframes blink{0%,100%{opacity:1}50%{opacity:.3}}
+.stxt{font-size:12px;color:var(--mu);letter-spacing:.04em;flex:1;}
+.vu{display:flex;gap:3px;align-items:flex-end;height:20px;}
+.vb{width:4px;border-radius:2px;background:var(--b2);height:3px;transition:height .08s,background .15s;}
+.vb.on{background:var(--id);}
+
+/* CONTROLS */
+.ctrl{padding:12px 18px;display:flex;gap:8px;border-bottom:1px solid var(--b1);flex-shrink:0;}
+.bmain{flex:1;padding:12px 14px;border-radius:6px;border:1px solid var(--b2);background:var(--sur2);font-family:var(--fn);font-size:13px;font-weight:500;color:var(--tx);cursor:pointer;letter-spacing:.07em;display:flex;align-items:center;justify-content:center;gap:8px;transition:all .15s;-webkit-tap-highlight-color:transparent;}
+.bmain:hover{background:#1e1e2a;}
+.bmain.run{border-color:rgba(244,114,102,.5);color:#f47266;background:rgba(244,114,102,.08);}
+.bmain.init{border-color:rgba(251,191,36,.5);color:#fbbf24;background:rgba(251,191,36,.08);}
+.bsm{padding:12px 13px;border-radius:6px;border:1px solid var(--b1);background:transparent;color:var(--mu);cursor:pointer;font-size:15px;transition:all .15s;-webkit-tap-highlight-color:transparent;}
+.bsm:hover{color:var(--tx);border-color:var(--b2);}
+.bsm.on{color:var(--id);border-color:rgba(74,222,128,.4);}
+
+/* FORCE TRANSLATE BUTTON */
+.ftrow{padding:8px 18px;border-bottom:1px solid var(--b1);display:none;flex-shrink:0;justify-content:center;}
+.ftrow.on{display:flex;}
+.ftbtn{
+  width:100%;padding:11px 16px;border-radius:6px;
+  border:1px solid rgba(251,191,36,.4);background:rgba(251,191,36,.08);
+  color:#fbbf24;font-family:var(--fn);font-size:12px;font-weight:500;
+  letter-spacing:.08em;cursor:pointer;display:flex;align-items:center;
+  justify-content:center;gap:8px;transition:all .15s;
+  -webkit-tap-highlight-color:transparent;
+}
+.ftbtn:hover,.ftbtn:active{background:rgba(251,191,36,.16);}
+
+/* LOG */
+.log{flex:1;overflow-y:auto;padding:14px 18px;display:flex;flex-direction:column;gap:10px;min-height:0;}
+.log::-webkit-scrollbar{width:4px;}
+.log::-webkit-scrollbar-thumb{background:var(--b2);border-radius:2px;}
+.empstate{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;color:var(--mu);text-align:center;gap:12px;padding:2rem 0;}
+.empicon{font-size:36px;opacity:.35;}
+.emptxt{font-size:12px;letter-spacing:.04em;line-height:1.9;}
+.msg{padding:12px 14px;border-radius:6px;background:var(--sur);border:1px solid var(--b1);animation:fi .2s ease;}
+@keyframes fi{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:translateY(0)}}
+.msg.sid{border-left:3px solid var(--id);}
+.msg.sjp{border-left:3px solid var(--jp);}
+.msg.scn{border-left:3px solid var(--cn);}
+.mmeta{font-size:10px;color:var(--mu);letter-spacing:.07em;text-transform:uppercase;margin-bottom:6px;display:flex;align-items:center;gap:8px;flex-wrap:wrap;}
+.mtime{margin-left:auto;opacity:.55;}
+.mreplay{background:none;border:1px solid var(--b2);border-radius:3px;color:var(--mu);font-family:var(--fn);font-size:10px;padding:1px 6px;cursor:pointer;}
+.mreplay:hover{color:var(--id);border-color:rgba(74,222,128,.4);}
+.morig{font-size:13px;color:var(--mu);margin-bottom:6px;font-style:italic;}
+.mtrans{font-size:var(--mfs);line-height:1.5;font-family:'Noto Sans JP','Noto Sans SC',var(--fn);}
+.mdiv{border:none;border-top:1px solid var(--b1);margin:7px 0;}
+.badge{font-size:10px;padding:2px 7px;border-radius:3px;letter-spacing:.05em;}
+.bid{background:rgba(74,222,128,.1);color:var(--id);border:1px solid rgba(74,222,128,.3);}
+.bjp{background:rgba(244,114,182,.1);color:var(--jp);border:1px solid rgba(244,114,182,.3);}
+.bcn{background:rgba(251,146,60,.1);color:var(--cn);border:1px solid rgba(251,146,60,.3);}
+
+/* TOAST */
+.toasts{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);display:flex;flex-direction:column;gap:8px;z-index:8888;pointer-events:none;align-items:center;}
+.toast{background:var(--sur2);border:1px solid var(--b2);border-radius:8px;padding:9px 16px;font-size:12px;color:var(--tx);letter-spacing:.04em;animation:ti .25s ease;white-space:nowrap;max-width:90vw;text-align:center;}
+.toast.err{border-color:rgba(248,113,113,.4);color:#f87171;background:rgba(248,113,113,.08);}
+.toast.ok{border-color:rgba(74,222,128,.4);color:var(--id);background:rgba(74,222,128,.08);}
+.toast.warn{border-color:rgba(251,191,36,.4);color:#fbbf24;background:rgba(251,191,36,.08);}
+@keyframes ti{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+
+/* CONFIRM */
+.cov{position:fixed;inset:0;background:rgba(0,0,0,.6);display:none;align-items:center;justify-content:center;z-index:9000;padding:24px;}
+.cov.on{display:flex;}
+.cbox{background:var(--sur);border:1px solid var(--b2);border-radius:10px;padding:24px;max-width:320px;width:100%;display:flex;flex-direction:column;gap:14px;animation:cin .2s ease;}
+@keyframes cin{from{opacity:0;transform:scale(.95)}to{opacity:1;transform:scale(1)}}
+.ctitle{font-size:14px;font-weight:500;color:var(--tx);}
+.cmsg{font-size:13px;color:var(--mu);line-height:1.5;}
+.cacts{display:flex;gap:10px;}
+.cbtn{flex:1;padding:10px;border-radius:6px;border:1px solid var(--b2);background:var(--sur2);color:var(--tx);font-family:var(--fn);font-size:12px;letter-spacing:.06em;cursor:pointer;}
+.cbtn.danger{border-color:rgba(244,114,102,.5);color:#f47266;background:rgba(244,114,102,.08);}
+
+/* DEBUG */
+.dbgp{background:#000;color:#0f0;font-family:monospace;font-size:10px;padding:8px 12px;max-height:130px;overflow-y:auto;border-top:1px solid #0f04;display:none;flex-shrink:0;}
+.dbgp.on{display:block;}
+.dl{margin:1px 0;white-space:pre-wrap;word-break:break-all;}
+.de{color:#f87171;}.dok{color:#4ade80;}.dw{color:#fbbf24;}
+
+@media (orientation:landscape) and (max-height:500px){
+  .lbox{min-height:50px;padding:8px 18px;}
+  .ltxt{font-size:calc(var(--lfs)*.8);}
+  .tapbtn{padding:10px 8px;}
+  .tapflag{font-size:22px;}
+  .sec,.tbar,.taprow,.swaprow,.ftrow{padding-top:7px;padding-bottom:7px;}
+}
+@media (max-width:480px){
+  .hdr,.sbar,.sec,.stbar,.ctrl,.lbox,.tbar,.taprow,.swaprow,.ftrow,.dbgp{padding-left:14px;padding-right:14px;}
+  .log{padding:12px 14px;}
+}
+</style>
+</head>
+<body>
+
+<!-- LOCK -->
+<div class="ls" id="lock-screen">
+  <div class="ls-icon">🔒</div>
+  <div class="ls-title">Live Interpreter &middot; Private</div>
+  <input type="password" class="ls-inp" id="lock-input" placeholder="Password" autocomplete="off"
+    onkeydown="if(event.key==='Enter')checkPass()">
+  <button class="ls-btn" onclick="checkPass()">MASUK</button>
+  <div class="ls-err" id="lock-err"></div>
+</div>
+
+<!-- CONFIRM -->
+<div class="cov" id="cov">
+  <div class="cbox">
+    <div class="ctitle" id="ctitle">Konfirmasi</div>
+    <div class="cmsg" id="cmsg"></div>
+    <div class="cacts">
+      <button class="cbtn" onclick="confirmCancel()">Batal</button>
+      <button class="cbtn danger" onclick="confirmOk()">Ya, lanjut</button>
+    </div>
+  </div>
+</div>
+
+<!-- APP -->
+<div id="app">
+
+  <div class="hdr">
+    <div class="logo"><span>LIVE</span> INTERPRETER &middot; ID &middot; JP &middot; CN</div>
+    <div class="brand"><span class="netdot" id="netdot"></span><span>Andono Imagine &mdash; 2026</span></div>
+  </div>
+
+  <div class="sbar">
+    <span>KALIMAT:</span><span class="snum" id="stat-s">0</span>
+    <span>&middot;</span>
+    <span>SESI:</span><span class="snum" id="stat-t">00:00</span>
+    <span class="ncb" id="ncb"><span class="ncd"></span><span id="nct">NC</span></span>
+    <div class="sbtns">
+      <button class="sbtn" id="xl-btn" onclick="toggleXL()" title="Mode XL">XL</button>
+      <button class="sbtn" id="fs-btn" onclick="toggleFS()" title="Fullscreen">&#x2922;</button>
+      <button class="sbtn" id="wl-btn" onclick="toggleWL()" title="Wake Lock">&#x1F506;</button>
+      <button class="sbtn" onclick="exportTx()" title="Export">&#x1F4BE;</button>
+      <button class="sbtn" onclick="resetStats()" title="Reset">&#x21BA;</button>
+      <button class="sbtn" id="dbg-btn" onclick="toggleDbg()">&#x1F41B;</button>
+    </div>
+  </div>
+
+  <div class="sec">
+    <div class="row">
+      <span class="rl">BAHASA</span>
+      <button class="chip jp" id="lang-jp" onclick="setLang('jp')">&#x1F1EE;&#x1F1E9;&#x21D4;&#x1F1EF;&#x1F1F5; JEPANG</button>
+      <button class="chip" id="lang-cn" onclick="setLang('cn')">&#x1F1EE;&#x1F1E9;&#x21D4;&#x1F1E8;&#x1F1F3; MANDARIN</button>
+      <button class="chip" id="lang-both" onclick="setLang('both')">&#x1F1EF;&#x1F1F5;&#x1F1E8;&#x1F1F3; KEDUANYA</button>
+      <button class="chip" id="lang-jpcn" onclick="setLang('jpcn')">&#x1F1EF;&#x1F1F5;&#x21D4;&#x1F1E8;&#x1F1F3; JP&middot;CN</button>
+    </div>
+  </div>
+
+  <div class="sec">
+    <div class="row">
+      <span class="rl">MODE</span>
+      <button class="chip ma" id="im-a" onclick="setMode('a')">&#x23F1; A &middot; AUTO</button>
+      <button class="chip" id="im-b" onclick="setMode('b')">&#x1F446; B &middot; TAP</button>
+      <span class="rl" style="margin-left:6px">TTS</span>
+      <select class="spsel" id="tts-speed" onchange="setSpeed(this.value)">
+        <option value="0.7">Lambat</option>
+        <option value="0.9" selected>Normal</option>
+        <option value="1.1">Cepat</option>
+        <option value="1.3">Sangat Cepat</option>
+      </select>
+    </div>
+  </div>
+
+  <div class="sec" id="timer-setting">
+    <div class="row">
+      <span class="rl">DURASI/SISI</span>
+      <input type="range" class="tslider" id="timer-slider" min="3" max="30" value="5" step="1" oninput="setTimerDur(this.value)">
+      <span class="tval" id="timer-val">5 dtk</span>
+      <label style="font-size:11px;color:var(--mu);display:flex;align-items:center;gap:4px;">
+        <input type="checkbox" id="smart-cb" checked onchange="setSmart(this.checked)" style="accent-color:var(--bo);">SMART
+      </label>
+    </div>
+  </div>
+
+  <div class="tbar" id="timer-bar" style="display:none">
+    <div class="row">
+      <span class="rl">AKTIF</span>
+      <div class="ttrack"><div class="tfill" id="tfill"></div></div>
+      <span class="tlang" id="tlang">&#x1F1EE;&#x1F1E9; ID</span>
+      <span class="tsecs" id="tsecs">5s</span>
+      <span class="tsmart" id="tsmart">+</span>
+    </div>
+  </div>
+
+  <div class="taprow" id="tap-panel" style="display:none">
+    <button class="tapbtn" id="tap-id" onclick="tap('id')">
+      <span class="tapflag" id="tap-id-flag">&#x1F1EE;&#x1F1E9;</span>
+      <span class="taplbl" id="tap-id-lbl">INDONESIA</span>
+      <span class="tapst" id="tap-id-st">Tap untuk giliran</span>
+    </button>
+    <button class="tapbtn" id="tap-fo" onclick="tap('fo')">
+      <span class="tapflag" id="tap-fo-flag">&#x1F1EF;&#x1F1F5;</span>
+      <span class="taplbl" id="tap-fo-lbl">JEPANG</span>
+      <span class="tapst" id="tap-fo-st">Tap untuk giliran</span>
+    </button>
+  </div>
+
+  <div class="swaprow" id="swap-row">
+    <button onclick="swapTap()">&#x1F504; SWAP GILIRAN</button>
+  </div>
+
+  <!-- Force Translate Button -->
+  <div class="ftrow" id="ft-row">
+    <button class="ftbtn" onclick="forceTx()">&#x26A1; TERJEMAHKAN SEKARANG</button>
+  </div>
+
+  <div class="lbox" id="live-box">
+    <div class="llbl"><span>&#x1F3A4;</span><span id="live-lbl">YANG TERDENGAR</span></div>
+    <div class="ltxt emp" id="live-txt">Tekan START untuk mulai...</div>
+  </div>
+
+  <div class="stbar">
+    <div class="dot" id="dot"></div>
+    <span class="stxt" id="stxt">Siap digunakan</span>
+    <div class="vu">
+      <div class="vb" id="vu1"></div><div class="vb" id="vu2"></div>
+      <div class="vb" id="vu3"></div><div class="vb" id="vu4"></div>
+      <div class="vb" id="vu5"></div><div class="vb" id="vu6"></div>
+      <div class="vb" id="vu7"></div>
+    </div>
+  </div>
+
+  <div class="ctrl">
+    <button class="bmain" id="btn-main" onclick="onMainClick()">
+      <span id="btn-icon">&#x25B6;</span>
+      <span id="btn-lbl">START INTERPRETER</span>
+    </button>
+    <button class="bsm" id="btn-mute" onclick="toggleMute()" title="Mute">&#x1F50A;</button>
+    <button class="bsm" onclick="onClearClick()" title="Clear">&#x1F5D1;</button>
+  </div>
+
+  <div class="log" id="log">
+    <div class="empstate" id="empstate">
+      <div class="empicon">&#x1F3A4;</div>
+      <div class="emptxt">Mode A: timer bergantian otomatis<br>Mode B: tap untuk pilih giliran</div>
+    </div>
+  </div>
+
+  <div class="dbgp" id="dbg-panel"></div>
+</div>
+
+<div class="toasts" id="toasts"></div>
+
+<script>
+'use strict';
+
+// -- PLATFORM ----------------------------------------------
+var SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+var IS_ANDROID = /Android/i.test(navigator.userAgent);
+var IS_IOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
+var IS_MOB = IS_ANDROID || IS_IOS;
+
+// -- PASSWORD ----------------------------------------------
+function simpleHash(s) {
+  var h = 0;
+  for (var i = 0; i < s.length; i++) h = Math.imul(31, h) + s.charCodeAt(i) | 0;
+  return h.toString(36);
+}
+var PASS_HASH = simpleHash('andono2026');
+
+function checkPass() {
+  var v = ge('lock-input').value;
+  if (simpleHash(v) !== PASS_HASH) {
+    var e = ge('lock-err');
+    e.textContent = 'Password salah';
+    ge('lock-input').value = '';
+    ge('lock-input').focus();
+    setTimeout(function(){ e.textContent = ''; }, 2000);
+    return;
+  }
+  var ls = ge('lock-screen');
+  ls.classList.add('out');
+  setTimeout(function() {
+    ls.style.display = 'none';
+    ge('app').style.display = 'flex';
+    sessionStorage.setItem('auth','1');
+    init();
+  }, 400);
+}
+
+function ready(fn) {
+  if (document.readyState !== 'loading') fn();
+  else document.addEventListener('DOMContentLoaded', fn);
+}
+
+if (sessionStorage.getItem('auth') === '1') {
+  ready(function() {
+    ge('lock-screen').style.display = 'none';
+    ge('app').style.display = 'flex';
+    init();
+  });
+}
+
+// -- STATE -------------------------------------------------
+var S = {
+  running:false, starting:false, speaking:false,
+  lang:'jp', mode:'a', timerMs:5000, smart:true,
+  ttsRate:0.9, tapSide:null, cycleSide:'id',
+  muted:false, xl:false, sentences:0, sessionStart:null, wl:null
+};
+
+var transcript = [];
+var recInst = null;
+var recBusy = false;
+
+// Buffers & timers
+var pending = '';
+var pendingTmr = null;
+var lastFinal = '';
+var lastFinalTime = 0;
+var silTmr = null;
+var lastPartial = '';
+var lastPartialTime = 0;
+var lastVoiceTime = 0;
+
+// Sentence buffer - dedup/merge potongan kalimat Android
+var sentBuf = '';
+var sentBufTime = 0;
+var sentBufTmr = null;
+var SENT_BUF_MS = 2500;
+
+// Audio
+var audioStream = null;
+var audioCtx = null;
+var vuRAF = null;
+var avuInt = null;
+
+// VAD
+var vadOn = false;
+var vadSilStart = 0;
+var VAD_THR = 15;
+var VAD_SIL = 2500;
+
+// Timer
+var timerInt = null;
+var timerRem = 5000;
+var timerExt = false;
+var sessInt = null;
+
+var debugOn = false;
+var pendingConfirm = null;
+var speechQ = [];
+
+// -- DOM ---------------------------------------------------
+function ge(id) { return document.getElementById(id); }
+
+function escHtml(s) {
+  return String(s).replace(/[&<>"']/g, function(c) {
+    return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];
+  });
+}
+
+// -- DEBUG -------------------------------------------------
+function dbg(msg, type) {
+  if (!debugOn) return;
+  var p = ge('dbg-panel');
+  if (!p) return;
+  var d = document.createElement('div');
+  d.className = 'dl'+(type==='err'?' de':type==='ok'?' dok':type==='warn'?' dw':'');
+  var t = new Date().toLocaleTimeString('id-ID',{minute:'2-digit',second:'2-digit'});
+  d.textContent = t+' '+String(msg);
+  p.appendChild(d);
+  while(p.children.length > 80) p.removeChild(p.firstChild);
+  p.scrollTop = p.scrollHeight;
+}
+
+function toggleDbg() {
+  debugOn = !debugOn;
+  ge('dbg-panel').classList.toggle('on', debugOn);
+  ge('dbg-btn').classList.toggle('dbg-on', debugOn);
+  if (debugOn) dbg('DEBUG ON | Android:'+IS_ANDROID+' | SR:'+!!SR, 'ok');
+}
+
+// -- TOAST -------------------------------------------------
+function toast(msg, type, ms) {
+  var c = ge('toasts'); if (!c) return;
+  var t = document.createElement('div');
+  t.className = 'toast'+(type?' '+type:'');
+  t.textContent = msg;
+  c.appendChild(t);
+  setTimeout(function(){
+    t.style.transition='opacity .3s'; t.style.opacity='0';
+    setTimeout(function(){ if(c.contains(t)) c.removeChild(t); }, 300);
+  }, ms||2500);
+}
+
+// -- CONFIRM -----------------------------------------------
+function askConfirm(title, msg, cb) {
+  ge('ctitle').textContent = title;
+  ge('cmsg').textContent = msg;
+  pendingConfirm = cb;
+  ge('cov').classList.add('on');
+}
+function confirmOk() {
+  ge('cov').classList.remove('on');
+  if (pendingConfirm) { pendingConfirm(); pendingConfirm = null; }
+}
+function confirmCancel() {
+  ge('cov').classList.remove('on');
+  pendingConfirm = null;
+}
+
+// -- WAKE LOCK ---------------------------------------------
+async function requestWL() {
+  if (!('wakeLock' in navigator)) return;
+  try {
+    S.wl = await navigator.wakeLock.request('screen');
+    ge('wl-btn').classList.add('on');
+    S.wl.addEventListener('release', function(){ S.wl=null; ge('wl-btn').classList.remove('on'); });
+  } catch(e) { dbg('WL err:'+e.message,'err'); }
+}
+function releaseWL() {
+  if (S.wl) { S.wl.release(); S.wl = null; }
+  ge('wl-btn').classList.remove('on');
+}
+function toggleWL() {
+  if (S.wl) { releaseWL(); toast('Wake Lock mati','warn',1500); }
+  else requestWL().then(function(){ if(S.wl) toast('Layar tidak akan mati','ok',2000); });
+}
+document.addEventListener('visibilitychange', function(){
+  if (document.visibilityState==='visible' && S.running && !S.wl) requestWL();
+});
+
+// -- FULLSCREEN --------------------------------------------
+function toggleFS() {
+  if (!document.fullscreenElement && !document.webkitFullscreenElement) {
+    var el = document.documentElement;
+    var fn = el.requestFullscreen || el.webkitRequestFullscreen;
+    if (fn) fn.call(el).then(function(){ ge('fs-btn').classList.add('on'); }).catch(function(){});
+  } else {
+    var ex = document.exitFullscreen || document.webkitExitFullscreen;
+    if (ex) ex.call(document);
+    ge('fs-btn').classList.remove('on');
+  }
+}
+
+// -- XL MODE -----------------------------------------------
+function toggleXL() {
+  S.xl = !S.xl;
+  document.body.classList.toggle('xl', S.xl);
+  ge('xl-btn').classList.toggle('on', S.xl);
+  localStorage.setItem('ixl', S.xl?'1':'0');
+  toast(S.xl?'Mode XL aktif':'Mode normal', '', 1500);
+}
+
+// -- ONLINE STATUS -----------------------------------------
+function updateNet() {
+  var d = ge('netdot');
+  if (d) d.classList.toggle('off', !navigator.onLine);
+}
+window.addEventListener('offline', function(){ updateNet(); toast('Koneksi terputus','err',5000); });
+window.addEventListener('online', function(){ updateNet(); toast('Koneksi kembali','ok',2000); });
+
+// -- INIT --------------------------------------------------
+function init() {
+  sessionStorage.setItem('auth','1');
+  if (!SR) toast('Gunakan Chrome/Edge','warn',5000);
+  updateNet();
+
+  var t = parseInt(localStorage.getItem('itimer')||'5');
+  S.timerMs = t*1000; timerRem = S.timerMs;
+  ge('timer-slider').value = t;
+  ge('timer-val').textContent = t+' dtk';
+
+  S.smart = localStorage.getItem('ismart')!=='0';
+  ge('smart-cb').checked = S.smart;
+
+  var spd = parseFloat(localStorage.getItem('ispeed')||'0.9');
+  S.ttsRate = spd; ge('tts-speed').value = String(spd);
+
+  S.xl = localStorage.getItem('ixl')==='1';
+  if (S.xl) { document.body.classList.add('xl'); ge('xl-btn').classList.add('on'); }
+
+  S.lang = localStorage.getItem('ilang')||'jp';
+  setLang(S.lang);
+  S.mode = localStorage.getItem('imode')||'a';
+  setMode(S.mode);
+
+  S.muted = localStorage.getItem('imute')==='1';
+  if (S.muted) { ge('btn-mute').textContent='🔇'; ge('btn-mute').classList.add('on'); }
+
+  var today = new Date().toDateString();
+  if (localStorage.getItem('idate')!==today) {
+    localStorage.setItem('idate',today); localStorage.setItem('icount','0');
+  }
+  S.sentences = parseInt(localStorage.getItem('icount')||'0');
+  updateStats();
+  loadHistory();
+  requestWL();
+  dbg('init done | mob:'+IS_MOB, 'ok');
+}
+
+// -- NC BADGE ----------------------------------------------
+function updateNC(on, settings) {
+  var b = ge('ncb'); var t = ge('nct');
+  if (!b||!t) return;
+  if (on) {
+    b.className = 'ncb on';
+    var f = [];
+    if (settings) {
+      if (settings.noiseSuppression) f.push('NS');
+      if (settings.echoCancellation) f.push('EC');
+      if (settings.autoGainControl) f.push('AGC');
+    }
+    t.textContent = '🛡 NC'+(f.length?' '+f.join('+'):' ON');
+  } else {
+    b.className = 'ncb'; t.textContent = '🛡 NC OFF';
+  }
+}
+
+// -- STATUS / LIVE TEXT ------------------------------------
+function setStatus(state, txt) {
+  var d = ge('dot'); if (d) d.className = 'dot'+(state?' '+state:'');
+  var s = ge('stxt'); if (s) s.textContent = txt;
+}
+function setLiveTxt(txt, type) {
+  var el = ge('live-txt'); if (!el) return;
+  el.className = 'ltxt'+(type?' '+type:'');
+  el.textContent = txt||'';
+  var box = ge('live-box'); if (box) box.classList.toggle('act', type!=='emp' && !!txt);
+}
+function setLiveLbl(side) {
+  var el = ge('live-lbl'); if (!el) return;
+  if (!side) { el.textContent='YANG TERDENGAR'; return; }
+  if (S.lang==='jpcn') el.textContent = side==='id' ? 'YANG TERDENGAR - JEPANG' : 'YANG TERDENGAR - MANDARIN';
+  else if (side==='id') el.textContent = 'YANG TERDENGAR - INDONESIA';
+  else el.textContent = 'YANG TERDENGAR - '+(S.lang==='cn'?'MANDARIN':'JEPANG');
+}
+function updateStats() {
+  var el = ge('stat-s'); if (el) el.textContent = S.sentences;
+}
+
+// -- SETTINGS ----------------------------------------------
+function setLang(l) {
+  S.lang = l;
+  localStorage.setItem('ilang', l);
+  ['jp','cn','both','jpcn'].forEach(function(x){
+    var el = ge('lang-'+x); if (el) el.className = 'chip'+(x===l?' '+l:'');
+  });
+  var ff = ge('tap-fo-flag'); var fl = ge('tap-fo-lbl');
+  var tf = ge('tap-id-flag'); var tl = ge('tap-id-lbl');
+  if (l==='jpcn') {
+    if (tf) tf.textContent='🇯🇵'; if (tl) tl.textContent='JEPANG';
+    if (ff) ff.textContent='🇨🇳'; if (fl) fl.textContent='MANDARIN';
+  } else {
+    if (tf) tf.textContent='🇮🇩'; if (tl) tl.textContent='INDONESIA';
+    if (ff) ff.textContent = l==='cn'?'🇨🇳':'🇯🇵';
+    if (fl) fl.textContent = l==='cn'?'MANDARIN':'JEPANG';
+  }
+  if (S.running) restartCfg();
+}
+
+function setMode(m) {
+  S.mode = m;
+  localStorage.setItem('imode', m);
+  var a = ge('im-a'); var b = ge('im-b');
+  if (a) a.className = 'chip'+(m==='a'?' ma':'');
+  if (b) b.className = 'chip'+(m==='b'?' mb':'');
+  var ts = ge('timer-setting'); if (ts) ts.style.display = m==='a'?'block':'none';
+  if (S.running) restartCfg();
+  else {
+    var tb=ge('timer-bar'); var tp=ge('tap-panel'); var sr=ge('swap-row'); var fr=ge('ft-row');
+    if (tb) tb.style.display='none';
+    if (tp) tp.style.display='none';
+    if (sr) sr.classList.remove('on');
+    if (fr) fr.classList.remove('on');
+  }
+}
+
+function setTimerDur(val) {
+  S.timerMs = parseInt(val)*1000; timerRem = S.timerMs;
+  localStorage.setItem('itimer', val);
+  var el = ge('timer-val'); if (el) el.textContent = val+' dtk';
+}
+
+function setSmart(v) {
+  S.smart = v; localStorage.setItem('ismart', v?'1':'0');
+  toast(v?'Smart Mode A aktif':'Smart Mode dimatikan','',1500);
+}
+
+function setSpeed(val) {
+  S.ttsRate = parseFloat(val); localStorage.setItem('ispeed', val);
+  var el = ge('tts-speed');
+  var lbl = el&&el.selectedOptions[0]?el.selectedOptions[0].text:val;
+  toast('TTS: '+lbl,'',1500);
+}
+
+function toggleMute() {
+  S.muted = !S.muted; localStorage.setItem('imute', S.muted?'1':'0');
+  var b = ge('btn-mute');
+  if (b) { b.textContent = S.muted?'🔇':'🔊'; b.classList.toggle('on', S.muted); }
+  toast(S.muted?'Speaker mati':'Speaker nyala','',1500);
+}
+
+// -- LANGUAGE HELPERS --------------------------------------
+function forLang() { return S.lang==='cn'?'zh-CN':'ja-JP'; }
+
+function lCode(side) {
+  if (S.lang==='jpcn') return side==='id'?'ja-JP':'zh-CN';
+  return side==='id'?'id-ID':forLang();
+}
+
+function detectSrc(text) {
+  var kana = (text.match(/[\u3040-\u30ff]/g)||[]).length;
+  var cjk  = (text.match(/[\u4e00-\u9fff]/g)||[]).length;
+  var lat  = (text.match(/[a-zA-Z]/g)||[]).length;
+  if (kana>=1) return 'jp';
+  if (cjk>=2 && cjk>lat) return 'cn';
+  return 'id';
+}
+
+// Normalize untuk perbandingan (hilangkan punctuation, lowercase)
+function norm(s) {
+  return String(s).toLowerCase().replace(/[.,!?;:'"()]/g,'').replace(/\s+/g,' ').trim();
+}
+
+// Cari kata yang overlap di ujung A dan awal B
+function findOverlap(a, b) {
+  var aw=a.split(/\s+/); var bw=b.split(/\s+/);
+  var mx=Math.min(aw.length,bw.length,8);
+  for(var n=mx;n>0;n--) {
+    if(aw.slice(-n).join(' ')===bw.slice(0,n).join(' ')) return n;
+  }
+  return 0;
+}
+
+// -- RUN / STOP --------------------------------------------
+function onMainClick() {
+  if (S.starting) return;
+  if (S.running) askConfirm('Hentikan Interpreter?','Sesi saat ini dihentikan. Riwayat tetap tersimpan.',stopRun);
+  else startRun();
+}
+
+function startRun() {
+  if (!SR) { toast('Browser tidak mendukung Web Speech API','err'); return; }
+  if (!navigator.onLine) { toast('Tidak ada koneksi internet','err',4000); return; }
+  S.starting = true; S.running = true;
+  var bm=ge('btn-main'); bm.classList.add('init');
+  ge('btn-icon').textContent='...';
+  ge('btn-lbl').textContent='MEMULAI...';
+  setStatus('init','Mengaktifkan mikrofon...');
+  startSessTimer(); requestWL();
+  setLiveTxt('Sedang menyiapkan...','emp');
+  setTimeout(function(){
+    if (!S.running) return;
+    S.starting=false;
+    var bm=ge('btn-main'); bm.classList.remove('init'); bm.classList.add('run');
+    ge('btn-icon').textContent='■';
+    ge('btn-lbl').textContent='STOP INTERPRETER';
+    restartCfg();
+  }, 400);
+}
+
+function stopRun() {
+  S.running=false; S.starting=false; S.tapSide=null; S.speaking=false;
+  stopRec(); clearTimerA(); stopSessTimer(); cleanAudio();
+  clearTimeout(pendingTmr); clearTimeout(silTmr); clearTimeout(sentBufTmr);
+  pending=''; lastPartial=''; sentBuf=''; sentBufTime=0;
+  speechQ.length=0;
+  var bm=ge('btn-main'); if(bm){bm.classList.remove('run');bm.classList.remove('init');}
+  ge('btn-icon').textContent='▶';
+  ge('btn-lbl').textContent='START INTERPRETER';
+  setStatus('','Interpreter dihentikan');
+  setLiveTxt('','emp');
+  ['timer-bar','tap-panel'].forEach(function(id){ var el=ge(id); if(el) el.style.display='none'; });
+  ge('swap-row').classList.remove('on');
+  ge('ft-row').classList.remove('on');
+  resetVU(); updateNC(false);
+  toast('Interpreter dihentikan','',1500);
+}
+
+function restartCfg() {
+  stopRec(); clearTimerA();
+  clearTimeout(pendingTmr); clearTimeout(silTmr); clearTimeout(sentBufTmr);
+  pending=''; lastPartial=''; sentBuf=''; sentBufTime=0;
+  setLiveTxt('','emp');
+  var fr=ge('ft-row');
+  if (S.mode==='a') {
+    S.cycleSide='id';
+    ge('timer-bar').style.display='block';
+    ge('tap-panel').style.display='none';
+    ge('swap-row').classList.remove('on');
+    if(fr) fr.classList.remove('on');
+    setTimeout(function(){ if(S.running) beginCycleA('id'); }, 250);
+  } else {
+    S.tapSide='id';
+    ge('timer-bar').style.display='none';
+    ge('tap-panel').style.display='flex';
+    ge('swap-row').classList.add('on');
+    if(fr) fr.classList.add('on');
+    updateTapUI(); setLiveLbl('id');
+    setTimeout(function(){ if(S.running) startRec(lCode('id')); }, 250);
+  }
+}
+
+// -- FORCE TRANSLATE ---------------------------------------
+function forceTx() {
+  if (!S.running || S.speaking) return;
+  clearTimeout(silTmr); clearTimeout(pendingTmr); clearTimeout(sentBufTmr);
+  var txt = lastPartial || sentBuf || pending;
+  if (!txt || txt.length < 2) {
+    toast('Belum ada ucapan yang terdeteksi','warn',1500); return;
+  }
+  dbg('FORCE TRANSLATE: '+txt.substring(0,50), 'warn');
+  lastPartial=''; pending='';
+  var combined = sentBuf ? sentBuf : txt;
+  sentBuf=''; sentBufTime=0;
+  setLiveTxt(combined, 'fin');
+  toast('Menerjemahkan...','',1000);
+  var now = Date.now();
+  if (combined===lastFinal && now-lastFinalTime<3000) {
+    toast('Sudah diterjemahkan','',1500); return;
+  }
+  lastFinal=combined; lastFinalTime=now;
+  handleFinal(combined);
+}
+
+// -- MODE A ------------------------------------------------
+function beginCycleA(side) {
+  if (!S.running) return;
+  S.cycleSide=side; timerExt=false;
+  ge('tsmart').classList.remove('on');
+  setLiveLbl(side); setLiveTxt('Mendengarkan...','emp');
+  startRec(lCode(side)); startTimerA();
+}
+
+function startTimerA() {
+  clearTimerA(); timerRem=S.timerMs; updateTimerUI();
+  timerInt = setInterval(function(){
+    timerRem -= 100; updateTimerUI();
+    if (timerRem<=0) {
+      if (S.smart && !timerExt && lastVoiceTime && (Date.now()-lastVoiceTime<1000)) {
+        timerExt=true; timerRem=3000;
+        ge('tsmart').classList.add('on');
+        dbg('smart +3s','ok'); return;
+      }
+      clearTimerA();
+      if (!S.running||S.speaking) return;
+      var next = S.cycleSide==='id'?'fo':'id';
+      stopRec();
+      clearTimeout(pendingTmr); clearTimeout(silTmr); clearTimeout(sentBufTmr);
+      pending=''; lastPartial=''; sentBuf=''; sentBufTime=0;
+      setTimeout(function(){ if(S.running&&!S.speaking) beginCycleA(next); }, 250);
+    }
+  }, 100);
+}
+
+function clearTimerA() {
+  clearInterval(timerInt); timerInt=null;
+  var el=ge('tsmart'); if(el) el.classList.remove('on');
+}
+
+function updateTimerUI() {
+  var max = timerExt?3000:S.timerMs;
+  var pct = (timerRem/max)*100;
+  var f=ge('tfill'); if(f){ f.style.width=Math.max(0,Math.min(100,pct))+'%'; f.style.background=pct>50?'#4ade80':pct>20?'#fbbf24':'#f87171'; }
+  var l=ge('tlang'); if(l) l.textContent = S.lang==='jpcn'?(S.cycleSide==='id'?'🇯🇵 JP':'🇨🇳 CN'):(S.cycleSide==='id'?'🇮🇩 ID':(S.lang==='cn'?'🇨🇳 CN':'🇯🇵 JP'));
+  var s=ge('tsecs'); if(s) s.textContent=Math.max(0,Math.ceil(timerRem/1000))+'s';
+}
+
+// -- MODE B ------------------------------------------------
+function tap(side) {
+  if (!S.running||S.speaking) return;
+  if (S.tapSide===side) return;
+  S.tapSide=side; updateTapUI(); stopRec();
+  setLiveLbl(side); setLiveTxt('Mendengarkan...','emp');
+  setTimeout(function(){ if(S.running&&S.tapSide===side) startRec(lCode(side)); }, 200);
+}
+
+function swapTap() { if (!S.running) return; tap(S.tapSide==='id'?'fo':'id'); }
+
+function updateTapUI() {
+  var ti=ge('tap-id'); var tf=ge('tap-fo');
+  var tis=ge('tap-id-st'); var tfs=ge('tap-fo-st');
+  if(ti) ti.className='tapbtn'; if(tf) tf.className='tapbtn';
+  if(tis) tis.textContent='Tap untuk giliran'; if(tfs) tfs.textContent='Tap untuk giliran';
+  if (!S.tapSide) return;
+  if (S.tapSide==='id') {
+    var cls = S.lang==='jpcn'?'ljp':'lid';
+    if(ti) ti.className='tapbtn '+cls; if(tis) tis.textContent='🎙 Mendengarkan';
+  } else {
+    var cls2 = (S.lang==='jpcn'||S.lang==='cn')?'lcn':'ljp';
+    if(tf) tf.className='tapbtn '+cls2; if(tfs) tfs.textContent='🎙 Mendengarkan';
+  }
+}
+
+// -- RECOGNITION -------------------------------------------
+async function startRec(lang) {
+  if (!SR||!S.running||recBusy) return;
+  recBusy=true; stopRecOnly();
+
+  if (!IS_MOB) {
+    try {
+      if (audioStream) { audioStream.getTracks().forEach(function(t){t.stop();}); audioStream=null; }
+      audioStream = await navigator.mediaDevices.getUserMedia({audio:{echoCancellation:true,noiseSuppression:true,autoGainControl:true,channelCount:1}});
+      var track=audioStream.getAudioTracks()[0];
+      var settings=track.getSettings?track.getSettings():{};
+      updateNC(true,settings); setupVU(audioStream);
+      dbg('mic OK','ok');
+    } catch(e) { dbg('mic err:'+e.message,'err'); updateNC(false); }
+  } else {
+    updateNC(true,{noiseSuppression:true,echoCancellation:true,autoGainControl:true});
+    if (IS_ANDROID) startAvu();
+  }
+
+  var r = new SR();
+  // continuous:true pada semua platform - KUNCI mengurangi bip Android
+  // Bip terjadi saat recognition start/stop. Dengan continuous:true recognition
+  // tidak pernah stop kecuali saat kita paksa (ganti sisi/speaker), jauh lebih jarang.
+  r.continuous = true;
+  r.interimResults = true;
+  r.lang = lang;
+  r.maxAlternatives = 1;
+
+  var lbl = lang==='id-ID'?'Mendengarkan (ID)...':lang==='ja-JP'?'Mendengarkan (JP)...':'Mendengarkan (CN)...';
+
+  r.onstart = function(){ recBusy=false; setStatus('lis',lbl); dbg('rec.start '+lang); if(IS_ANDROID) startAvu(); };
+  r.onsoundstart = function(){ lastVoiceTime=Date.now(); dbg('soundstart','ok'); if(IS_ANDROID) setLiveTxt('🎙 Suara terdeteksi...','par'); };
+  r.onspeechstart = function(){ lastVoiceTime=Date.now(); dbg('speechstart','ok'); if(IS_ANDROID) setLiveTxt('🎙 Bicara terdeteksi...','par'); };
+  r.onspeechend = function(){ dbg('speechend','warn'); /* JANGAN stop - cegah bip */ };
+
+  r.onresult = function(e) {
+    if (S.speaking) return;
+    lastVoiceTime = Date.now();
+    for (var i=e.resultIndex; i<e.results.length; i++) {
+      var txt = e.results[i][0].transcript.trim();
+      var isFinal = e.results[i].isFinal;
+
+      if (!isFinal) {
+        if (!txt) continue;
+        setLiveTxt(txt,'par');
+        dbg('partial: '+txt.substring(0,40));
+        if (txt!==lastPartial) {
+          lastPartial=txt; lastPartialTime=Date.now();
+          // Smart Mode A
+          if (S.mode==='a' && S.smart && timerInt && timerRem<1500 && !timerExt) {
+            timerExt=true; timerRem=3000; ge('tsmart').classList.add('on');
+            dbg('smart extend','ok');
+          }
+          clearTimeout(silTmr);
+          // Silence timer: 2.5 detik Android, 2.2 detik desktop
+          var silMs = IS_ANDROID?2500:2200;
+          silTmr = setTimeout(function(){
+            var sinceChange = Date.now()-lastPartialTime;
+            if (sinceChange < (IS_ANDROID?2500:2200)-300) return; // masih ada update baru
+            if (lastPartial&&lastPartial.length>=2&&!S.speaking) {
+              dbg('sil-force: '+lastPartial,'warn');
+              var t=lastPartial; lastPartial='';
+              setLiveTxt(t,'fin'); pending=t;
+              clearTimeout(pendingTmr); triggerFinal();
+            }
+          }, silMs);
+        }
+        continue;
+      }
+
+      // Final dari API
+      if (txt.length<2) continue;
+      dbg('api-final: '+txt.substring(0,40),'ok');
+      setLiveTxt(txt,'fin'); clearTimeout(silTmr);
+      lastPartial=''; lastPartialTime=0;
+      if (txt.length>pending.length) pending=txt;
+      clearTimeout(pendingTmr);
+      pendingTmr = setTimeout(function(){ triggerFinal(); }, 300);
+    }
+  };
+
+  r.onerror = function(e) {
+    recBusy=false;
+    dbg('rec err:'+e.error, (e.error==='no-speech'||e.error==='aborted')?'':'err');
+    if (e.error==='not-allowed') { toast('Izin mikrofon ditolak','err',5000); stopRun(); return; }
+    if (e.error==='network') toast('Koneksi bermasalah','warn');
+    if (e.error==='no-speech'||e.error==='aborted') { if(!S.running||S.speaking) return; restartSame(lang); return; }
+    setTimeout(function(){ if(S.running&&!S.speaking) startRec(lang); }, 800);
+  };
+
+  r.onend = function() {
+    recBusy=false;
+    dbg('onend partial="'+(lastPartial||'none')+'"');
+    if (!S.running||S.speaking) return;
+    if (lastPartial&&lastPartial.length>=2) {
+      dbg('onend force-final: '+lastPartial,'warn');
+      var t=lastPartial; lastPartial=''; clearTimeout(silTmr);
+      setLiveTxt(t,'fin'); pending=t; clearTimeout(pendingTmr); triggerFinal();
+    }
+    restartSame(lang);
+  };
+
+  recInst=r;
+  try { r.start(); } catch(x){ recBusy=false; dbg('start err:'+x.message,'err'); }
+}
+
+function restartSame(lang) {
+  if (!S.running||S.speaking) return;
+  setTimeout(function(){
+    if (!S.running||S.speaking) return;
+    if (S.mode==='a'&&timerInt) startRec(lang);
+    else if (S.mode==='b'&&S.tapSide&&lCode(S.tapSide)===lang) startRec(lang);
+  }, 200);
+}
+
+function stopRecOnly() {
+  if (recInst) {
+    try {
+      recInst.onend=null; recInst.onerror=null; recInst.onresult=null;
+      recInst.onspeechend=null; recInst.onsoundstart=null; recInst.onspeechstart=null;
+      recInst.stop();
+    } catch(x){}
+    recInst=null;
+  }
+  recBusy=false;
+}
+
+function stopRec() { stopRecOnly(); stopAvu(); }
+
+// -- SENTENCE BUFFER ---------------------------------------
+function triggerFinal() {
+  var fin=pending; pending='';
+  if (!fin||fin.length<2) return;
+  var now=Date.now();
+  if (fin===lastFinal&&now-lastFinalTime<3000) { dbg('dup: '+fin); return; }
+
+  if (sentBuf && now-sentBufTime < SENT_BUF_MS+1500) {
+    var nF=norm(fin); var nB=norm(sentBuf);
+    if (nF===nB) {
+      // Identik - perpanjang timer saja
+      sentBufTime=now;
+    } else if (nF.length>nB.length && nF.indexOf(nB)===0) {
+      // fin adalah extension dari buffer - replace
+      dbg('buf-replace -> '+fin.substring(0,40),'warn');
+      sentBuf=fin; sentBufTime=now;
+    } else if (nB.length>nF.length && nB.indexOf(nF)===0) {
+      // buffer sudah lebih lengkap - skip fin
+      dbg('buf-skip-shorter'); sentBufTime=now;
+    } else if (nF.indexOf(nB)!==-1) {
+      // fin mengandung buffer di mana saja
+      dbg('buf-contains -> '+fin.substring(0,40),'warn');
+      sentBuf=fin; sentBufTime=now;
+    } else if (nB.indexOf(nF)!==-1) {
+      // buffer mengandung fin - skip
+      dbg('buf-contained, skip'); sentBufTime=now;
+    } else {
+      // Benar-benar berbeda - cek overlap kata
+      var ov=findOverlap(norm(sentBuf), nF);
+      if (ov>0) {
+        var bw=sentBuf.split(/\s+/); var fw=fin.split(/\s+/);
+        sentBuf=bw.concat(fw.slice(ov)).join(' ');
+        dbg('buf-merge('+ov+'): '+sentBuf.substring(0,50),'warn');
+      } else {
+        sentBuf=sentBuf+' '+fin;
+        dbg('buf-append: '+fin,'warn');
+      }
+      sentBufTime=now;
+    }
+  } else {
+    sentBuf=fin; sentBufTime=now;
+    dbg('buf-start: '+fin.substring(0,40));
+  }
+
+  clearTimeout(sentBufTmr);
+  sentBufTmr=setTimeout(function(){
+    var combined=sentBuf; sentBuf=''; sentBufTime=0;
+    if (!combined||combined.length<2) return;
+    var t=Date.now();
+    if (combined===lastFinal&&t-lastFinalTime<3000) { dbg('post-buf dup'); return; }
+    lastFinal=combined; lastFinalTime=t;
+    dbg('FINAL: '+combined.substring(0,60),'ok');
+    handleFinal(combined);
+  }, SENT_BUF_MS);
+}
+
+// -- TRANSLATION -------------------------------------------
+async function txText(text, from, to) {
+  var url='https://translate.googleapis.com/translate_a/single?client=gtx&sl='+from+'&tl='+to+'&dt=t&q='+encodeURIComponent(text);
+  var res=await fetch(url);
+  if (!res.ok) throw new Error('HTTP '+res.status);
+  var data=await res.json();
+  if (!data||!data[0]) throw new Error('Empty');
+  return data[0].filter(function(x){return x&&x[0];}).map(function(x){return x[0];}).join('');
+}
+
+async function handleFinal(text) {
+  if (!text||text.length<2) return;
+
+  // Cek extension dari pesan terakhir dalam 6 detik - replace kalau ya
+  var now=Date.now();
+  var last=transcript.length?transcript[transcript.length-1]:null;
+  if (last&&last.ts&&now-last.ts<6000) {
+    var nL=norm(last.original); var nT=norm(text);
+    if (nT.length>nL.length && nT.indexOf(nL)===0) {
+      dbg('log-replace: ext dari pesan terakhir','warn');
+      var log=ge('log');
+      if (log&&log.firstChild&&log.firstChild.classList&&log.firstChild.classList.contains('msg')) {
+        log.removeChild(log.firstChild);
+      }
+      transcript.pop();
+      S.sentences=Math.max(0,S.sentences-1); updateStats(); saveHistory();
+    } else if (nL.length>0&&nL.indexOf(nT)!==-1) {
+      dbg('log-skip: sudah tercakup'); return;
+    }
+  }
+
+  setStatus('pro','Menerjemahkan...');
+  dbg('tx: '+text.substring(0,50));
+  var src=detectSrc(text); dbg('src:'+src);
+  try {
+    var result;
+    if (S.lang==='jpcn') {
+      if (src==='jp') {
+        var tl=await txText(text,'ja','zh-CN');
+        result={dir:'jp-cn',translated:tl}; addMsg(text,result,'jp');
+        if (!S.muted) queueSpeak(tl,'zh-CN');
+      } else if (src==='cn') {
+        var tl=await txText(text,'zh-CN','ja');
+        result={dir:'cn-jp',translated:tl}; addMsg(text,result,'cn');
+        if (!S.muted) queueSpeak(tl,'ja-JP');
+      } else {
+        var res=await Promise.all([txText(text,'id','ja'),txText(text,'id','zh-CN')]);
+        result={dir:'id-both',jp:res[0],cn:res[1]}; addMsg(text,result,'id');
+        if (!S.muted) queueSpeak(res[0],'ja-JP');
+      }
+    } else if (src==='id') {
+      if (S.lang==='both') {
+        var res=await Promise.all([txText(text,'id','ja'),txText(text,'id','zh-CN')]);
+        result={dir:'id-both',jp:res[0],cn:res[1]}; addMsg(text,result,'id');
+        if (!S.muted) queueSpeak(res[0],'ja-JP');
+      } else {
+        var to=S.lang==='cn'?'zh-CN':'ja';
+        var tl=await txText(text,'id',to);
+        result={dir:S.lang==='cn'?'id-cn':'id-jp',translated:tl}; addMsg(text,result,'id');
+        if (!S.muted) queueSpeak(tl,S.lang==='cn'?'zh-CN':'ja-JP');
+      }
+    } else {
+      var from=src==='jp'?'ja':'zh-CN';
+      var tl=await txText(text,from,'id');
+      result={dir:src+'-id',translated:tl}; addMsg(text,result,src);
+      if (!S.muted) queueSpeak(tl,'id-ID');
+    }
+    S.sentences++; localStorage.setItem('icount',String(S.sentences)); updateStats();
+    dbg('tx OK','ok');
+  } catch(e) {
+    dbg('tx FAIL:'+e.message,'err');
+    setStatus('lis','Gagal menerjemahkan');
+    if (!navigator.onLine) toast('Tidak ada koneksi','err');
+    else toast('Gagal menerjemahkan','warn',2000);
+  }
+}
+
+// -- SPEECH OUTPUT -----------------------------------------
+function queueSpeak(text, lang) {
+  speechQ.push({text:text,lang:lang});
+  if (!S.speaking) processSpeak();
+}
+
+function processSpeak() {
+  if (!speechQ.length) {
+    S.speaking=false;
+    if (!S.running) return;
+    setStatus('lis','Mendengarkan...');
+    setTimeout(function(){
+      if (!S.running) return;
+      if (S.mode==='a') { if(timerInt) startRec(lCode(S.cycleSide)); else beginCycleA(S.cycleSide); }
+      else if (S.tapSide) startRec(lCode(S.tapSide));
+    }, 350);
+    return;
+  }
+  S.speaking=true; stopRecOnly(); clearTimerA();
+  var item=speechQ.shift();
+  setStatus('spk','Memutar terjemahan...');
+  var u=new SpeechSynthesisUtterance(item.text);
+  u.lang=item.lang; u.rate=S.ttsRate;
+  u.onend=function(){ setTimeout(processSpeak,350); };
+  u.onerror=function(){ setTimeout(processSpeak,350); };
+  window.speechSynthesis.speak(u);
+}
+
+function replayMsg(text, lang) {
+  if (!text||!lang) return;
+  window.speechSynthesis.cancel();
+  var u=new SpeechSynthesisUtterance(text);
+  u.lang=lang; u.rate=S.ttsRate;
+  window.speechSynthesis.speak(u);
+  toast('Memutar ulang','',1500);
+}
+
+// -- MESSAGE LOG -------------------------------------------
+function buildMsgHtml(original, parsed, srcLang, timeStr, isHistory) {
+  var isJpcn=S.lang==='jpcn';
+  var badge = srcLang==='id' ? '<span class="badge bid">KAMU &middot; ID</span>' :
+              srcLang==='jp' ? '<span class="badge bjp">'+(isJpcn?'JEPANG':'LAWAN &middot; JP')+'</span>' :
+                               '<span class="badge bcn">'+(isJpcn?'MANDARIN':'LAWAN &middot; CN')+'</span>';
+  var tlbl=isHistory?(timeStr+' (history)'):timeStr;
+  var reText='',reLang='';
+  if (parsed.dir==='id-both') { reText=parsed.jp; reLang='ja-JP'; }
+  else if (parsed.dir==='id-jp') { reText=parsed.translated; reLang='ja-JP'; }
+  else if (parsed.dir==='id-cn') { reText=parsed.translated; reLang='zh-CN'; }
+  else if (parsed.dir==='jp-id'||parsed.dir==='cn-id') { reText=parsed.translated; reLang='id-ID'; }
+  else if (parsed.dir==='jp-cn') { reText=parsed.translated; reLang='zh-CN'; }
+  else if (parsed.dir==='cn-jp') { reText=parsed.translated; reLang='ja-JP'; }
+  var rBtn=reText?'<button class="mreplay" onclick="replayMsg('+JSON.stringify(reText).replace(/"/g,'&quot;')+',\''+reLang+'\')">&#x1F50A; ULANGI</button>':'';
+  var body='<div class="mmeta">'+badge+rBtn+'<span class="mtime">'+tlbl+'</span></div>'+
+           '<div class="morig">&ldquo;'+escHtml(original)+'&rdquo;</div>';
+  if (parsed.dir==='id-both') {
+    body+='<div class="mtrans">&#x1F1EF;&#x1F1F5; '+escHtml(parsed.jp)+'</div>'+
+          '<hr class="mdiv">'+
+          '<div class="mtrans">&#x1F1E8;&#x1F1F3; '+escHtml(parsed.cn)+'</div>';
+  } else {
+    var flag;
+    if (parsed.dir==='id-jp'||parsed.dir==='cn-jp') flag='&#x1F1EF;&#x1F1F5;';
+    else if (parsed.dir==='id-cn'||parsed.dir==='jp-cn') flag='&#x1F1E8;&#x1F1F3;';
+    else flag='&#x1F1EE;&#x1F1E9;';
+    body+='<div class="mtrans">'+flag+' '+escHtml(parsed.translated)+'</div>';
+  }
+  return body;
+}
+
+function addMsg(original, parsed, srcLang) {
+  var log=ge('log');
+  var emp=ge('empstate'); if(emp) emp.remove();
+  var now=new Date().toLocaleTimeString('id-ID',{hour:'2-digit',minute:'2-digit',second:'2-digit'});
+  var div=document.createElement('div');
+  div.className='msg s'+srcLang;
+  div.innerHTML=buildMsgHtml(original,parsed,srcLang,now,false);
+  log.insertBefore(div,log.firstChild); log.scrollTop=0;
+  transcript.push({time:now,ts:Date.now(),original:original,result:parsed,srcLang:srcLang});
+  saveHistory();
+}
+
+function addMsgHistory(entry) {
+  var log=ge('log');
+  var emp=ge('empstate'); if(emp) emp.remove();
+  var div=document.createElement('div');
+  div.className='msg s'+entry.srcLang;
+  div.innerHTML=buildMsgHtml(entry.original,entry.result,entry.srcLang,entry.time,true);
+  log.appendChild(div);
+}
+
+// -- HISTORY -----------------------------------------------
+function saveHistory() {
+  try { localStorage.setItem('ihist',JSON.stringify(transcript.slice(-200))); } catch(e){}
+}
+
+function loadHistory() {
+  try {
+    var saved=localStorage.getItem('ihist'); if(!saved) return;
+    var entries=JSON.parse(saved); if(!entries||!entries.length) return;
+    entries.forEach(function(e){
+      if(!e.time||!e.original||!e.result||!e.srcLang) return;
+      transcript.push(e); addMsgHistory(e);
+    });
+    dbg('loaded '+entries.length+' history','ok');
+  } catch(e){ dbg('history err:'+e.message,'err'); }
+}
+
+function exportTx() {
+  if (!transcript.length) { toast('Belum ada percakapan','warn'); return; }
+  var txt='TRANSCRIPT - Andono Imagine Live Interpreter\n';
+  txt+=new Date().toLocaleString('id-ID')+'\n'+'='.repeat(40)+'\n\n';
+  var isJpcn=S.lang==='jpcn';
+  transcript.forEach(function(e){
+    var who=e.srcLang==='id'?'KAMU (ID)':e.srcLang==='jp'?(isJpcn?'JEPANG':'LAWAN (JP)'):(isJpcn?'MANDARIN':'LAWAN (CN)');
+    txt+='['+e.time+'] '+who+'\n  Asli: '+e.original+'\n';
+    if (e.result.dir==='id-both') txt+='  JP: '+e.result.jp+'\n  CN: '+e.result.cn+'\n';
+    else txt+='  Terjemahan: '+e.result.translated+'\n';
+    txt+='\n';
+  });
+  var blob=new Blob([txt],{type:'text/plain;charset=utf-8'});
+  var url=URL.createObjectURL(blob);
+  var a=document.createElement('a'); a.href=url;
+  a.download='transcript_'+new Date().toISOString().slice(0,10)+'.txt';
+  a.click(); URL.revokeObjectURL(url);
+  toast('Transcript diexport','ok');
+}
+
+function onClearClick() {
+  if (!transcript.length) return;
+  askConfirm('Hapus semua riwayat?','Log percakapan dihapus permanen.',clearLog);
+}
+
+function clearLog() {
+  ge('log').innerHTML='<div class="empstate" id="empstate"><div class="empicon">&#x1F3A4;</div><div class="emptxt">Mode A: timer bergantian otomatis<br>Mode B: tap untuk pilih giliran</div></div>';
+  transcript.length=0; localStorage.removeItem('ihist');
+  toast('Log dikosongkan','',1500);
+}
+
+// -- STATS -------------------------------------------------
+function startSessTimer() {
+  S.sessionStart=Date.now();
+  sessInt=setInterval(function(){
+    var sec=Math.floor((Date.now()-S.sessionStart)/1000);
+    var el=ge('stat-t');
+    if(el) el.textContent=String(Math.floor(sec/60)).padStart(2,'0')+':'+String(sec%60).padStart(2,'0');
+  }, 1000);
+}
+function stopSessTimer() { clearInterval(sessInt); sessInt=null; }
+function resetStats() {
+  S.sentences=0; localStorage.setItem('icount','0');
+  var el=ge('stat-t'); if(el) el.textContent='00:00';
+  if (S.running) S.sessionStart=Date.now();
+  updateStats(); toast('Statistik di-reset','',1500);
+}
+
+// -- VU METER + VAD ----------------------------------------
+function setupVU(stream) {
+  cancelAnimationFrame(vuRAF);
+  if (audioCtx) { try{audioCtx.close();}catch(x){} }
+  audioCtx=new (window.AudioContext||window.webkitAudioContext)();
+  var src=audioCtx.createMediaStreamSource(stream);
+  var an=audioCtx.createAnalyser(); an.fftSize=256; an.smoothingTimeConstant=0.7;
+  src.connect(an); var data=new Uint8Array(an.frequencyBinCount);
+  vadOn=false; vadSilStart=0;
+  function tick() {
+    if (!S.running||!an) return;
+    an.getByteFrequencyData(data);
+    var vs=Math.floor(300/(audioCtx.sampleRate/an.fftSize));
+    var ve=Math.floor(3400/(audioCtx.sampleRate/an.fftSize));
+    var sum=0; for(var i=vs;i<ve;i++) sum+=data[i];
+    var avg=sum/(ve-vs); var lv=Math.min(7,Math.floor(avg/8));
+    for(var j=1;j<=7;j++){
+      var b=ge('vu'+j); if(!b) continue;
+      if(j<=lv){b.classList.add('on');b.style.height=(3+j*2.5)+'px';}
+      else{b.classList.remove('on');b.style.height='3px';}
+    }
+    var dot=ge('dot'); if(dot) dot.style.transform=(lv>=2&&dot.classList.contains('lis'))?'scale(1.4)':'scale(1)';
+    // VAD
+    if (avg>VAD_THR) {
+      lastVoiceTime=Date.now();
+      if (!vadOn) { vadOn=true; var lt=ge('live-txt'); if(lt&&(lt.classList.contains('emp')||lt.textContent==='Mendengarkan...')) setLiveTxt('🎙 Suara terdeteksi...','par'); }
+      vadSilStart=0;
+    } else {
+      if (vadOn) {
+        if (!vadSilStart) vadSilStart=Date.now();
+        else if (Date.now()-vadSilStart>VAD_SIL) {
+          vadOn=false; vadSilStart=0;
+          if (lastPartial&&lastPartial.length>=2&&!S.speaking) {
+            dbg('VAD force: '+lastPartial,'warn');
+            var vt=lastPartial; lastPartial=''; clearTimeout(silTmr);
+            setLiveTxt(vt,'fin'); pending=vt; clearTimeout(pendingTmr); triggerFinal();
+          }
+        }
+      }
+    }
+    vuRAF=requestAnimationFrame(tick);
+  }
+  tick();
+}
+
+function startAvu() {
+  stopAvu(); var tick=0;
+  avuInt=setInterval(function(){
+    if (!S.running){stopAvu();return;}
+    tick++;
+    for(var i=1;i<=7;i++){
+      var b=ge('vu'+i); if(!b) continue;
+      b.style.height=(3+Math.abs(Math.sin((tick+i*2)*.3))*8)+'px';
+      b.classList.add('on');
+    }
+  },150);
+}
+function stopAvu() { if(avuInt){clearInterval(avuInt);avuInt=null;} }
+
+function resetVU() {
+  for(var i=1;i<=7;i++){var b=ge('vu'+i);if(b){b.classList.remove('on');b.style.height='3px';}}
+  var dot=ge('dot'); if(dot) dot.style.transform='scale(1)';
+  stopAvu();
+}
+
+function cleanAudio() {
+  cancelAnimationFrame(vuRAF); stopAvu();
+  if(audioStream){audioStream.getTracks().forEach(function(t){t.stop();});audioStream=null;}
+  if(audioCtx){try{audioCtx.close();}catch(x){}audioCtx=null;}
+}
+</script>
+</body>
+</html>
