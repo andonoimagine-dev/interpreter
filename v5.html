@@ -41,38 +41,30 @@ body.xl{--lfs:26px;--mfs:18px;}
   display:flex;align-items:center;justify-content:space-between;gap:10px;flex-shrink:0;
   background:var(--sur);
 }
+.hdr-left{display:flex;align-items:center;gap:14px;}
 .logo{font-size:13px;font-weight:700;letter-spacing:.12em;color:var(--tx);white-space:nowrap;flex-shrink:0;}
-.hdr-meta{display:flex;align-items:center;gap:12px;margin-left:auto;}
 .brand-box{display:flex;align-items:center;gap:5px;font-size:10px;color:var(--mu);letter-spacing:.02em;white-space:nowrap;}
 .netdot{width:6px;height:6px;border-radius:50%;background:var(--id);flex-shrink:0;}
 .netdot.off{background:#f87171;animation:blink 1.4s infinite;}
-.hdr-btns{display:flex;align-items:center;gap:4px;flex-shrink:0;}
+.hdr-btns{display:flex;align-items:center;gap:4px;flex-shrink:0;margin-left:auto;}
 .hbtn{background:none;border:1px solid var(--b1);border-radius:4px;color:var(--mu);font-family:var(--fn);font-size:10px;padding:4px 7px;cursor:pointer;transition:all .15s;white-space:nowrap;}
 .hbtn:hover{color:var(--tx);border-color:var(--b2);}
 .hbtn.on{color:var(--id);border-color:rgba(74,222,128,.35);}
 .hbtn.dbg-on{color:#0f0;border-color:#0f04;}
 
 /* -- RESPONSIVE DASHBOARD GRID -- */
-.dashboard{
-  display:flex;flex:1;min-height:0;flex-direction:column;
-}
+.dashboard{display:flex;flex:1;min-height:0;flex-direction:column;}
 
-/* Panel Control Mobile First (Mencegah Tombol Terpotong) */
 .panel-control{
   display:flex;flex-direction:column;
   background:var(--bg);
   flex:0 0 auto;
-  max-height:65vh; /* Membatasi tinggi agar log history di bawahnya tetap kebagian ruang */
-  overflow-y:auto; /* Jika layar sangat pendek, kontrol internal bisa di-scroll aman */
+  max-height:65vh;
+  overflow-y:auto;
   border-bottom:2px solid var(--b1);
 }
-.panel-log{
-  display:flex;flex-direction:column;
-  flex:1;min-height:0;
-  background:var(--bg);
-}
+.panel-log{display:flex;flex-direction:column;flex:1;min-height:0;background:var(--bg);}
 
-/* DESKTOP RESPONSIVE LAYOUT (2 KOLOM GABUNGAN) */
 @media (min-width: 992px) {
   .dashboard { flex-direction: row; }
   .panel-control { width: 440px; max-height: 100%; border-right: 1px solid var(--b1); border-bottom: none; overflow-y: visible; }
@@ -178,7 +170,7 @@ body.xl{--lfs:26px;--mfs:18px;}
 .badge{font-size:9px;padding:1px 4px;border-radius:3px;}
 .bid{background:rgba(74,222,128,.1);color:var(--id);border:1px solid rgba(74,222,128,.3);}
 .bjp{background:rgba(244,114,182,.1);color:var(--jp);border:1px solid rgba(244,114,182,.3);}
-.bcn{background:rgba(251,146,60,.1);color:var(--cn);border:1px solid rgba(251,146,60,.3);}
+.bcn">background:rgba(251,146,60,.1);color:var(--cn);border:1px solid rgba(251,146,60,.3);}
 
 /* -- TOAST & CONFIRM -- */
 .toasts{position:fixed;bottom:16px;left:50%;transform:translateX(-50%);display:flex;flex-direction:column;gap:6px;z-index:8888;pointer-events:none;align-items:center;}
@@ -209,9 +201,11 @@ body.xl{--lfs:26px;--mfs:18px;}
   .sec,.tbar,.taprow{padding-top:4px;padding-bottom:4px;}
 }
 @media (max-width:480px) {
-  .hdr { padding: 8px 12px; }
+  .hdr { padding: 6px 12px; }
+  .hdr-left { flex-direction: column; align-items: flex-start; gap: 1px; }
   .logo { font-size: 11px; }
-  .brand-box { display: none; } /* Sembunyikan meta brand di layar kecil untuk menghemat tempat */
+  .brand-box { font-size: 8px; opacity: 0.85; }
+  .netdot { width: 5px; height: 5px; }
   .hdr-btns { gap: 2px; }
   .hbtn { padding: 3px 5px; font-size: 9px; }
 }
@@ -242,20 +236,20 @@ body.xl{--lfs:26px;--mfs:18px;}
 <div id="app">
 
   <div class="hdr">
-    <div class="logo">LIVE INTERPRETER</div>
-    <div class="hdr-meta">
+    <div class="hdr-left">
+      <div class="logo">LIVE INTERPRETER</div>
       <div class="brand-box">
         <span class="netdot" id="netdot"></span>
         <span>Andono Imagine &mdash; 2026</span>
       </div>
-      <div class="hdr-btns">
-        <button class="hbtn" id="xl-btn" onclick="toggleXL()" title="Font besar">XL</button>
-        <button class="hbtn" id="fs-btn" onclick="toggleFS()" title="Fullscreen">&#x2922;</button>
-        <button class="hbtn" id="wl-btn" onclick="toggleWL()" title="Wake Lock">&#x1F506;</button>
-        <button class="hbtn" onclick="exportTx()" title="Export">&#x1F4BE;</button>
-        <button class="hbtn" onclick="resetStats()" title="Reset">&#x21BA;</button>
-        <button class="hbtn" id="dbg-btn" onclick="toggleDbg()">&#x1F41B;</button>
-      </div>
+    </div>
+    <div class="hdr-btns">
+      <button class="hbtn" id="xl-btn" onclick="toggleXL()" title="Font besar">XL</button>
+      <button class="hbtn" id="fs-btn" onclick="toggleFS()" title="Fullscreen">&#x2922;</button>
+      <button class="hbtn" id="wl-btn" onclick="toggleWL()" title="Wake Lock">&#x1F506;</button>
+      <button class="hbtn" onclick="exportTx()" title="Export">&#x1F4BE;</button>
+      <button class="hbtn" onclick="resetStats()" title="Reset">&#x21BA;</button>
+      <button class="hbtn" id="dbg-btn" onclick="toggleDbg()">&#x1F41B;</button>
     </div>
   </div>
 
@@ -363,7 +357,6 @@ body.xl{--lfs:26px;--mfs:18px;}
 
 <script>
 'use strict';
-// JavaScript logic tetap utuh sesuai versi perbaikan stabil sebelumnya
 var SR = window.SpeechRecognition || window.webkitSpeechRecognition;
 var IS_ANDROID = /Android/i.test(navigator.userAgent);
 var IS_IOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
